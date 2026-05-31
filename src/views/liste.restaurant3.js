@@ -1,64 +1,44 @@
 // src/views/liste.restaurant.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FooterRecharche from "../components/Footers/footer.recharche";
 import Navbar from "../components/Navbars/AdminNavbar";
 import RestaurantCard from "components/Common/restaurantCard.js";
 import { useHistory } from "react-router-dom";
+import apiGestionX from "services/apiGestionX";
 
 export default function ListeRestaurant() {
   const history = useHistory();
   const [searchTerm, setSearchTerm] = useState("");
   
-  const [restaurants, setRestaurants] = useState([
-    {
-      id: 1,
-      name: "Restaurant Andalous",
-      location: "Alger, Algérie",
-      description: "Les meilleurs plats arabes et internationaux dans une ambiance familiale",
-      image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      logo: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
-      phone: "+213 5 55 55 55 55",
-      email: "info@andalus-restaurant.dz",
-      rating: 4.8,
-      employees: 12
-    },
-    {
-      id: 2,
-      name: "Café Parisien",
-      location: "Paris, France",
-      description: "Café chic avec une ambiance parisienne authentique",
-      image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb",
-      logo: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
-      phone: "+33 6 12 34 56 78",
-      email: "contact@cafeparisien.fr",
-      rating: 4.5,
-      employees: 8
-    },
-    {
-      id: 3,
-      name: "La Piazza Italia",
-      location: "Rome, Italie",
-      description: "Cuisine italienne authentique dans un cadre chaleureux",
-      image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5",
-      logo: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
-      phone: "+39 6 12 34 56 78",
-      email: "info@lapiazza.it",
-      rating: 4.7,
-      employees: 15
-    },
-    {
-      id: 4,
-      name: "Sushi Master",
-      location: "Tokyo, Japon",
-      description: "Les meilleurs sushis préparés par des chefs experts",
-      image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c",
-      logo: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
-      phone: "+81 3 12 34 56 78",
-      email: "info@sushimaster.jp",
-      rating: 4.9,
-      employees: 20
-    }
-  ]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        const data = await apiGestionX.getAllRestaurants();
+        const list = Array.isArray(data) ? data : data?.restaurants || [];
+        const mapped = list.map(r => ({
+          id: r._id,
+          name: r.name || "Restaurant",
+          location: r.location || r.address || "",
+          description: r.description || "",
+          image: r.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+          logo: r.logo || "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
+          phone: r.phone || "",
+          email: r.email || "",
+          rating: r.rating || 0,
+          employees: r.employeesCount || 0
+        }));
+        setRestaurants(mapped);
+      } catch (error) {
+        console.error('Erreur chargement restaurants:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRestaurants();
+  }, []);
 
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -77,7 +57,7 @@ export default function ListeRestaurant() {
   const goToRestaurantProfile = () => {
     if (selectedRestaurant) {
       setShowModal(false);
-      history.push(`/restaurant/${selectedRestaurant.id}`);
+      history.push('/visitorprofile', { restaurant: selectedRestaurant });
     }
   };
 
@@ -245,7 +225,12 @@ export default function ListeRestaurant() {
       
       <div className="restaurants-container">
         <div className="restaurants-grid">
-          {filteredRestaurants.length === 0 ? (
+          {loading ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">⏳</div>
+              <p>Chargement des restaurants...</p>
+            </div>
+          ) : filteredRestaurants.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">🍽️</div>
               <p>Aucun restaurant trouvé</p>

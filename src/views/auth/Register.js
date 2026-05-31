@@ -1,6 +1,7 @@
 // src/views/RegisterPage.js
 import React, { useState, useRef } from "react";
 import { Link, useHistory } from "react-router-dom";
+import axiosInstance from "../../services/axiosConfig";
 
 export default function RegisterPage() {
   const history = useHistory();
@@ -103,21 +104,29 @@ export default function RegisterPage() {
     return isValid;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
       setIsLoading(true);
-      setTimeout(() => {
-        let roleText = "";
-        if (role === "manager") roleText = "Manager";
-        else if (role === "worker") roleText = "Worker";
-        else if (role === "owner") roleText = "Propriétaire";
-        
-        alert(`Welcome ${roleText}! Registration successful!\n\nName: ${firstName} ${lastName}\nEmail: ${email}\nPhone: ${phoneNumber}`);
-        setIsLoading(false);
+      try {
+        const payload = {
+          email,
+          password,
+          firstName,
+          lastName,
+          phone: phoneNumber,
+          role: role.toUpperCase() // 'MANAGER', 'WORKER', 'OWNER'
+        };
+        const response = await axiosInstance.post("../auth/register", payload);
+        alert(`✅ Compte créé avec succès ! Bienvenue.`);
         history.push("/auth/login");
-      }, 2000);
+      } catch (error) {
+        const message = error.response?.data?.message || error.message || "Une erreur est survenue lors de l'inscription";
+        alert(`❌ ${message}`);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

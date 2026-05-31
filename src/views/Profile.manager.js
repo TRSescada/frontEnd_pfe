@@ -1,15 +1,18 @@
 // src/views/ManagerProfile.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import Footer from "components/Footers/Footer.js";
 import IndexNavbar from "components/Navbars/IndexNavbar.js";
 import RestaurantCard from "components/Common/restaurantCard";
 import ProductCard from "components/Common/productCard";
 import SocialFooter from "components/Common/socialFooter";
+import apiGestionX from "services/apiGestionX";
+import apiUser from "services/apiUser";
+import jobOfferService from "services/jobOfferService";
 
 export default function ManagerProfile() {
   const history = useHistory();
-  
+
   // ==================== بيانات البروفيل ====================
   const [managerInfo, setManagerInfo] = useState({
     name: "Ahmed Benali",
@@ -24,7 +27,7 @@ export default function ManagerProfile() {
     coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
     profileImage: "https://randomuser.me/api/portraits/men/32.jpg"
   });
-  
+
   // ==================== SOCIAL LINKS ====================
   const [socialLinks, setSocialLinks] = useState({
     facebook: "",
@@ -33,7 +36,7 @@ export default function ManagerProfile() {
     linkedin: "",
     tiktok: ""
   });
-  
+
   // ==================== DONNÉES DU RESTAURANT ====================
   const [restaurantData, setRestaurantData] = useState({
     id: 1,
@@ -47,120 +50,76 @@ export default function ManagerProfile() {
     rating: 4.8,
     employees: 12
   });
-  
+
   const [showEditRestaurantModal, setShowEditRestaurantModal] = useState(false);
   const [tempRestaurantData, setTempRestaurantData] = useState({ ...restaurantData });
-  
+  const [restaurantLogoFile, setRestaurantLogoFile] = useState(null);
+  const [restaurantImageFile, setRestaurantImageFile] = useState(null);
+
   // ==================== STATE MANAGEMENT ====================
   const [tables, setTables] = useState([]);
   const [newTableCount, setNewTableCount] = useState(1);
   const [showQRPlaceholder, setShowQRPlaceholder] = useState(false);
   const [selectedTableForQR, setSelectedTableForQR] = useState(null);
   const [singleTableToDelete, setSingleTableToDelete] = useState("");
-  
+
   const [groups, setGroups] = useState([
     { id: 1, name: "Groupe 1", tableIds: [], tableRange: { start: 1, end: 9 } }
   ]);
   const [newGroupName, setNewGroupName] = useState("");
-  
+
   // ==================== DONNÉES DES EMPLOYÉS ====================
-  const [employees, setEmployees] = useState([
-    { 
-      id: 1, 
-      name: "Youssef", 
-      role: "Employé", 
-      groupId: 1, 
-      status: "working",
-      profileImage: "https://randomuser.me/api/portraits/men/1.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      location: "Casablanca, Maroc",
-      email: "youssef@example.com",
-      phone: "+212 6 12 34 56 78",
-      skills: ["Service client", "Rapidité", "Polyvalence"],
-      bio: "Employé dévoué avec 3 ans d'expérience.",
-      currentPlace: { id: 1, name: "Restaurant Andalous", icon: "🏪" }
-    },
-    { 
-      id: 2, 
-      name: "Mohamed", 
-      role: "Employé", 
-      groupId: null, 
-      status: "working",
-      profileImage: "https://randomuser.me/api/portraits/men/2.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      location: "Rabat, Maroc",
-      email: "mohamed@example.com",
-      phone: "+212 6 98 76 54 32",
-      skills: ["Gestion des stocks", "Organisation", "Travail d'équipe"],
-      bio: "Employé sérieux et organisé.",
-      currentPlace: { id: 2, name: "Café Parisien", icon: "☕" }
-    },
-    { 
-      id: 3, 
-      name: "Fatima", 
-      role: "Serveuse", 
-      groupId: 1, 
-      status: "working",
-      profileImage: "https://randomuser.me/api/portraits/women/1.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      location: "Tanger, Maroc",
-      email: "fatima@example.com",
-      phone: "+212 6 55 55 55 55",
-      skills: ["Service client", "Polyvalence", "Rapidité"],
-      bio: "Serveuse expérimentée avec 4 ans d'expérience.",
-      currentPlace: { id: 3, name: "La Piazza Italia", icon: "🍕" }
-    }
-  ]);
-  
+  const [employees, setEmployees] = useState([]);
+
   // ==================== DONNÉES DU MENU ====================
   const [menuCategories, setMenuCategories] = useState([
-    { 
-      id: 1, 
-      name: "Chicha", 
-      icon: "💨", 
-      color: "#ff6b6b", 
+    {
+      id: 1,
+      name: "Chicha",
+      icon: "💨",
+      color: "#ff6b6b",
       iconImage: "https://cdn-icons-png.flaticon.com/512/1998/1998626.png",
       products: [
         { id: 101, name: "Chicha Pomme", price: 15, image: "https://images.unsplash.com/photo-1544396821-4dd40b938ad3?w=300", description: "Chicha à la pomme fraîche" },
         { id: 102, name: "Chicha Raisin", price: 15, image: "https://images.unsplash.com/photo-1544396821-4dd40b938ad3?w=300", description: "Chicha au raisin sucré" },
         { id: 103, name: "Chicha Menthe", price: 15, image: "https://images.unsplash.com/photo-1544396821-4dd40b938ad3?w=300", description: "Chicha à la menthe rafraîchissante" }
-      ] 
+      ]
     },
-    { 
-      id: 2, 
-      name: "Plats", 
-      icon: "🍔", 
-      color: "#4ecdc4", 
+    {
+      id: 2,
+      name: "Plats",
+      icon: "🍔",
+      color: "#4ecdc4",
       iconImage: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
       products: [
         { id: 201, name: "Burger", price: 12, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300", description: "Burger artisanal avec frites maison" },
         { id: 202, name: "Pizza", price: 18, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=300", description: "Pizza margherita" }
-      ] 
+      ]
     },
-    { 
-      id: 3, 
-      name: "Boissons", 
-      icon: "🥤", 
-      color: "#45b7d1", 
+    {
+      id: 3,
+      name: "Boissons",
+      icon: "🥤",
+      color: "#45b7d1",
       iconImage: "https://cdn-icons-png.flaticon.com/512/1046/1046855.png",
       products: [
         { id: 301, name: "Coca Cola", price: 3, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=300", description: "Coca Cola 33cl" },
         { id: 302, name: "Jus d'Orange", price: 5, image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=300", description: "Jus d'orange frais" }
-      ] 
+      ]
     },
-    { 
-      id: 4, 
-      name: "Desserts", 
-      icon: "🍰", 
-      color: "#f9ca24", 
+    {
+      id: 4,
+      name: "Desserts",
+      icon: "🍰",
+      color: "#f9ca24",
       iconImage: "https://cdn-icons-png.flaticon.com/512/1046/1046790.png",
       products: [
         { id: 401, name: "Gâteau", price: 7, image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300", description: "Gâteau au chocolat fondant" },
         { id: 402, name: "Glace", price: 5, image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300", description: "Glace vanille" }
-      ] 
+      ]
     }
   ]);
-  
+
   // ==================== CARROUSEL STATE ====================
   const [selectedCategoryId, setSelectedCategoryId] = useState(1);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
@@ -169,23 +128,32 @@ export default function ManagerProfile() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [tempProductData, setTempProductData] = useState({ name: "", price: 0, image: "", description: "" });
+  const [tempProductImageFile, setTempProductImageFile] = useState(null);
   const [tempProductImagePreview, setTempProductImagePreview] = useState("");
-  
+
   // ==================== DRAG/SWIPE STATE ====================
   const [dragStartX, setDragStartX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
-  
+
   const selectedCategory = menuCategories.find(cat => cat.id === selectedCategoryId);
   const currentProducts = selectedCategory?.products || [];
   const currentProduct = currentProducts[currentProductIndex];
-  
+
+  const restaurantEmployees = employees.filter(emp => {
+    const restaurantIdMatch = emp.restaurantId === restaurantData.id || emp.restaurantId === String(restaurantData.id);
+    const currentPlaceIdMatch = emp.currentPlace?.id === restaurantData.id || emp.currentPlace?.id === String(restaurantData.id);
+    const currentPlaceNameMatch = emp.currentPlace?.name?.toLowerCase() === restaurantData.name?.toLowerCase();
+    return restaurantIdMatch || currentPlaceIdMatch || currentPlaceNameMatch;
+  });
+
   // ==================== MODALS STATE ====================
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [selectedCategoryForProduct, setSelectedCategoryForProduct] = useState(null);
   const [newProduct, setNewProduct] = useState({ name: "", price: 0, image: "", description: "" });
+  const [productImageFile, setProductImageFile] = useState(null);
   const [productImagePreview, setProductImagePreview] = useState("");
-  
+
   const [invoices, setInvoices] = useState([]);
   const [groupInvoices, setGroupInvoices] = useState([]);
   const [restaurantInvoice, setRestaurantInvoice] = useState(null);
@@ -196,119 +164,354 @@ export default function ManagerProfile() {
   const [selectedSeason, setSelectedSeason] = useState("spring");
   const [invoiceViewType, setInvoiceViewType] = useState("tables");
   const [showInvoices, setShowInvoices] = useState(false);
-  
+
+  // ==================== LOAD MANAGER DATA ON MOUNT ====================
+  useEffect(() => {
+    const loadManagerData = async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          console.warn('No userId in localStorage');
+          return;
+        }
+
+        // Get user info
+        const user = await apiUser.getUserById(userId);
+        setManagerInfo({
+          name: (user.firstName && user.lastName) ? `${user.firstName} ${user.lastName}` : user.name || "Manager",
+          role: user.role || "Manager",
+          email: user.email || "",
+          phone: user.phone || "",
+          location: user.location || "",
+          experience: user.experience || "",
+          skills: user.skills || [],
+          bio: user.bio || "",
+          languages: user.languages || [],
+          coverImage: user.coverImage || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+          profileImage: user.avatar || user.profileImage || "https://randomuser.me/api/portraits/men/32.jpg"
+        });
+
+        // Get manager record
+        const manager = await apiUser.getManagerByUserId(userId);
+        if (manager && manager._id) {
+          // Get restaurant
+          console.log('🟨 [useEffect] Fetching restaurant for manager:', manager._id);
+          const restaurant = await apiGestionX.getRestaurantByManagerId(manager._id);
+          console.log('✅ [useEffect] Restaurant reçu:', restaurant);
+          console.log('   Restaurant ID:', restaurant._id);
+          console.log('   Restaurant name:', restaurant.name);
+
+          setRestaurantData({
+            id: restaurant._id,
+            name: restaurant.name || "",
+            location: restaurant.location || "",
+            description: restaurant.description || "",
+            image: restaurant.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+            logo: restaurant.logo || "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
+            phone: restaurant.phone || "",
+            email: restaurant.email || "",
+            rating: restaurant.rating || 0,
+            employees: restaurant.employeesCount || 0
+          });
+          setTempRestaurantData(prev => ({ ...prev, ...restaurant }));
+          console.log('✅ [useEffect] restaurantData state mis à jour');
+
+          // Get tables filtered by restaurant
+          const tableResp = await apiGestionX.getTablesByRestaurant(restaurant._id);
+
+          const tablesList = (Array.isArray(tableResp) ? tableResp : tableResp.tables || []).map(t => {
+            const mapped = {
+              id: t._id,
+              number: t.numero,
+              groupId: t.groupe ? t.groupe._id : null,
+              status: t.etat || "libre",
+              qrCodeImage: t.qrCodeImage || null
+            };
+            console.log(`   Table mappée: numero=${mapped.number}, id=${mapped.id}`);
+            return mapped;
+          });
+          setTables(tablesList);
+
+          // Get groups filtered by restaurant
+          const groupsResp = await apiGestionX.getGroupesByRestaurant(restaurant._id);
+          const groupsList = (Array.isArray(groupsResp) ? groupsResp : groupsResp.groupes || []).map(g => ({
+            id: g._id,
+            name: g.nomgroupe,
+            tableIds: (g.tables || []).map(t => t._id),  // extract just the IDs
+            tables: g.tables || [],                        // keep full objects if needed
+            tableRange: {
+              start: g.startNumber || null,              // fix: was g.tableRange.start
+              end: g.endNumber || null                   // fix: was g.tableRange.end
+            }
+          }));
+          setGroups(groupsList.length > 0 ? groupsList : []);
+
+          // Get restaurant categories filtered by restaurant
+          const categoriesResp = await apiGestionX.getRestaurantCategories(restaurant._id);
+          const normalizeCategory = (name) => {
+            if (!name) return 'plat';
+            const key = name.trim().toLowerCase();
+            const map = {
+              plats: 'plat',
+              plat: 'plat',
+              boissons: 'boisson',
+              boisson: 'boisson',
+              chicha: 'chicha',
+              desserts: 'dessert',
+              dessert: 'dessert'
+            };
+            return map[key] || 'plat';
+          };
+
+          const categoriesList = (Array.isArray(categoriesResp) ? categoriesResp : categoriesResp.categories || []).map(c => ({
+            id: c._id,
+            name: c.name || c.nom || "Catégorie",
+            icon: c.icon || "🍔",
+            color: c.color || "#4ecdc4",
+            iconImage: c.iconImage || "",
+            categorieKey: normalizeCategory(c.name || c.nom),
+            products: []
+          }));
+
+          const categoriesWithProducts = await Promise.all(categoriesList.map(async (cat) => {
+            try {
+              const productsResp = await apiGestionX.getProductsByCategory(restaurant._id, cat.categorieKey);
+              const productItems = Array.isArray(productsResp) ? productsResp : productsResp.products || [];
+              return {
+                ...cat,
+                products: productItems.map(p => ({
+                  id: p._id,
+                  name: p.name || p.nom || "Produit",
+                  price: p.price || p.prix || 0,
+                  image: p.image || p.imageUrl || "",
+                  description: p.description || ""
+                }))
+              };
+            } catch (categoryError) {
+              console.warn(`Impossible de charger les produits pour la catégorie ${cat.name}:`, categoryError);
+              return cat;
+            }
+          }));
+
+          if (categoriesWithProducts.length > 0) {
+            setMenuCategories(categoriesWithProducts);
+            setSelectedCategoryId(categoriesWithProducts[0].id);
+          }
+
+          // Charge les employés réels affectés à ce manager / restaurant
+          try {
+            const workersResp = await jobOfferService.getMyWorkers(userId);
+            const workers = workersResp?.workers || workersResp || [];
+            const mappedEmployees = (Array.isArray(workers) ? workers : []).map(worker => {
+              const user = worker.user || {};
+              return {
+                id: worker._id,
+                name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Employé',
+                role: worker.role || user.role || 'Employé',
+                groupId: worker.groupe || worker.groupId || null,
+                status: worker.status ? worker.status.toLowerCase() : 'working',
+                profileImage: user.avatar || worker.profileImage || user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || 'Employé')}&background=22c55e&color=ffffff`,
+                coverImage: worker.coverImage || user.coverImage || '',
+                location: user.location || worker.location || restaurant.name || 'Non défini',
+                email: user.email || worker.email || '',
+                phone: user.phone || worker.phone || '',
+                skills: worker.skills || [],
+                bio: worker.bio || user.bio || '',
+                currentPlace: { id: restaurant._id, name: restaurant.name, icon: '🍽️' },
+                restaurantId: String(worker.restaurant || restaurant._id)
+              };
+            });
+            setEmployees(mappedEmployees);
+          } catch (workerError) {
+            console.warn('Impossible de charger les employés du manager :', workerError);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading manager data:', error);
+      }
+    };
+
+    loadManagerData();
+  }, []);
+
   // ==================== FUNCTIONS TABLES ====================
-  const addTables = () => {
-    const startId = tables.length + 1;
-    const newTables = [];
-    for (let i = 0; i < newTableCount; i++) {
-      const tableId = startId + i;
-      newTables.push({
-        id: tableId,
-        number: tableId,
-        groupId: null,
-        status: "free"
+  const addTables = async () => {
+    try {
+      const managerId = localStorage.getItem('userId');
+      const restaurantId = restaurantData.id;
+
+      console.log('🟦 [addTables] START');
+      console.log('  managerId:', managerId);
+      console.log('  restaurantId:', restaurantId);
+      console.log('  newTableCount:', newTableCount);
+
+      if (!managerId) {
+        alert('⚠️ Manager non connecté (userId manquant)');
+        return;
+      }
+
+      if (!restaurantId || restaurantId === 1) {
+        alert('⚠️ Restaurant non chargé - veuillez actualiser la page');
+        console.error('❌ restaurantId invalide:', restaurantId);
+        return;
+      }
+
+      console.log('🟨 Appel addMultipleTables');
+      const resp = await apiGestionX.addMultipleTables(managerId, restaurantId, Number(newTableCount));
+      console.log('✅ Réponse reçue:', resp);
+
+      console.log('🟨 Rechargement des tables depuis la base de données');
+      const tableResp = await apiGestionX.getTablesByRestaurant(restaurantId);
+      console.log('✅ Tables rechargées (raw):', tableResp);
+
+      const tablesList = (Array.isArray(tableResp) ? tableResp : tableResp.tables || []).map(t => {
+        const mapped = {
+          id: t._id,
+          number: t.numero,
+          groupId: t.groupe ? t.groupe._id : null,
+          status: t.etat || "libre"
+        };
+        console.log(`   Table reloadée: numero=${mapped.number}, id=${mapped.id}`);
+        return mapped;
       });
+      console.log('✅ Tables finales après add:', tablesList.length, 'tables');
+      console.log('   Full state:', JSON.stringify(tablesList, null, 2));
+
+      setTables(tablesList);
+      setNewTableCount(1);
+      alert(`✅ ${resp.tables?.length || 1} nouvelle(s) table(s) ajoutée(s) avec succès!`);
+    } catch (error) {
+      console.error('❌ Erreur ajout tables:', error);
+      alert(`❌ Échec lors de l'ajout des tables: ${error?.message || JSON.stringify(error)}`);
     }
-    setTables([...tables, ...newTables]);
-    alert(`✅ ${newTableCount} nouvelle(s) table(s) ajoutée(s) avec succès!`);
   };
-  
-  const deleteSingleTable = () => {
+
+  const deleteSingleTable = async () => {
     if (!singleTableToDelete.trim()) {
       alert("⚠️ Veuillez entrer le numéro de la table à supprimer");
       return;
     }
-    
+
     const tableNumber = parseInt(singleTableToDelete);
     const tableExists = tables.find(t => t.number === tableNumber);
-    
+
     if (!tableExists) {
       alert(`⚠️ La table ${tableNumber} n'existe pas`);
       return;
     }
-    
+
     if (window.confirm(`🗑️ Supprimer la table ${tableNumber} ?`)) {
-      const newTables = tables.filter(table => table.number !== tableNumber);
-      setTables(newTables);
-      
-      const updatedGroups = groups.map(group => ({
-        ...group,
-        tableIds: group.tableIds.filter(id => id !== tableNumber),
-        tableRange: group.tableRange.start && group.tableRange.end ? 
-          { start: group.tableRange.start, end: group.tableRange.end } : 
-          { start: null, end: null }
-      }));
-      setGroups(updatedGroups);
-      
-      setSingleTableToDelete("");
-      alert(`✅ Table ${tableNumber} supprimée avec succès`);
+      try {
+        await apiGestionX.deleteSingleTable(tableExists.id);
+
+        setTables(prev => prev.filter(table => table.number !== tableNumber));
+
+        const updatedGroups = groups.map(group => ({
+          ...group,
+          tableIds: group.tableIds.filter(id => id !== tableExists.id),
+          tableRange: group.tableRange.start && group.tableRange.end ?
+            { start: group.tableRange.start, end: group.tableRange.end } :
+            { start: null, end: null }
+        }));
+        setGroups(updatedGroups);
+
+        setSingleTableToDelete("");
+        alert(`✅ Table ${tableNumber} supprimée avec succès`);
+      } catch (error) {
+        console.error('❌ Erreur suppression table:', error);
+        alert(`❌ Impossible de supprimer la table: ${error?.message || JSON.stringify(error)}`);
+      }
     }
   };
-  
-  const deleteMultipleTables = () => {
+
+  const deleteMultipleTables = async () => {
     const input = document.getElementById('multipleTablesToDelete');
     if (!input || !input.value.trim()) {
       alert("⚠️ Veuillez entrer les numéros des tables à supprimer");
       return;
     }
-    
+
     let numbersToDelete = [];
     const inputValue = input.value.trim();
-    
+
     if (inputValue.includes('-')) {
       const [start, end] = inputValue.split('-').map(n => parseInt(n));
       for (let i = start; i <= end; i++) numbersToDelete.push(i);
     } else {
       numbersToDelete = inputValue.split(',').map(n => parseInt(n.trim()));
     }
-    
-    const existingTables = numbersToDelete.filter(num => tables.some(t => t.number === num));
-    if (existingTables.length === 0) {
+
+    const tablesToDelete = tables.filter(t => numbersToDelete.includes(t.number));
+    if (tablesToDelete.length === 0) {
       alert("⚠️ Aucune de ces tables n'existe");
       return;
     }
-    
-    if (window.confirm(`🗑️ Supprimer les tables: ${existingTables.join(', ')} ?`)) {
-      const newTables = tables.filter(table => !existingTables.includes(table.number));
-      setTables(newTables);
-      
-      const updatedGroups = groups.map(group => ({
-        ...group,
-        tableIds: group.tableIds.filter(id => !existingTables.includes(id)),
-        tableRange: group.tableRange.start && group.tableRange.end ? 
-          { start: group.tableRange.start, end: group.tableRange.end } : 
-          { start: null, end: null }
-      }));
-      setGroups(updatedGroups);
-      
-      input.value = '';
-      alert(`✅ Tables ${existingTables.join(', ')} supprimées avec succès`);
+
+    if (window.confirm(`🗑️ Supprimer les tables: ${tablesToDelete.map(t => t.number).join(', ')} ?`)) {
+      try {
+        const restaurantId = restaurantData.id;
+        const tableIds = tablesToDelete.map(t => t.id);
+        await apiGestionX.deleteMultipleTables(restaurantId, tableIds);
+
+        setTables(prev => prev.filter(table => !tableIds.includes(table.id)));
+
+        const updatedGroups = groups.map(group => ({
+          ...group,
+          tableIds: group.tableIds.filter(id => !tableIds.includes(id)),
+          tableRange: group.tableRange.start && group.tableRange.end ?
+            { start: group.tableRange.start, end: group.tableRange.end } :
+            { start: null, end: null }
+        }));
+        setGroups(updatedGroups);
+
+        input.value = '';
+        alert(`✅ Tables ${tablesToDelete.map(t => t.number).join(', ')} supprimées avec succès`);
+      } catch (error) {
+        console.error('❌ Erreur suppression tables:', error);
+        alert(`❌ Impossible de supprimer les tables: ${error?.message || JSON.stringify(error)}`);
+      }
     }
   };
-  
+
   const showQRPlaceholderFunc = (table) => {
+    console.log("aaaaaa", table)
     setSelectedTableForQR(table);
     setShowQRPlaceholder(true);
   };
-  
+
   // ==================== FUNCTIONS GROUPS ====================
-  const addGroup = () => {
+  const addGroup = async () => {
     if (!newGroupName.trim()) {
       alert("⚠️ Veuillez entrer un nom de groupe");
       return;
     }
-    const newGroup = {
-      id: groups.length + 1,
-      name: newGroupName,
-      tableIds: [],
-      tableRange: { start: null, end: null }
-    };
-    setGroups([...groups, newGroup]);
-    setNewGroupName("");
-    alert(`✅ Groupe "${newGroupName}" ajouté avec succès`);
+    try {
+      const restaurantId = restaurantData.id;
+      if (!restaurantId) {
+        alert('⚠️ Restaurant non trouvé (restaurantId manquant)');
+        return;
+      }
+
+      console.log('📤 Ajout groupe:', { restaurantId, name: newGroupName });
+      const response = await apiGestionX.addGroupe(restaurantId, newGroupName);
+      console.log('✅ Groupe créé:', response);
+
+      // Add to state with proper ID from backend
+      const newGroup = {
+        id: response.groupe._id,
+        name: response.groupe.nomgroupe,
+        tableIds: response.groupe.tables || [],
+        tableRange: { start: response.groupe.startNumber, end: response.groupe.endNumber }
+      };
+      setGroups([...groups, newGroup]);
+      setNewGroupName("");
+      alert(`✅ Groupe "${newGroupName}" ajouté avec succès!`);
+    } catch (error) {
+      console.error('❌ Erreur ajout groupe:', error);
+      alert(`❌ Échec lors de l'ajout du groupe: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   const checkOverlap = (startTable, endTable, currentGroupId = null) => {
     for (const group of groups) {
       if (currentGroupId !== null && group.id === currentGroupId) continue;
@@ -320,130 +523,214 @@ export default function ManagerProfile() {
     }
     return null;
   };
-  
-  const assignTablesToGroup = (groupId, startTable, endTable) => {
-    if (startTable > endTable) {
-      alert("⚠️ Le numéro de début doit être inférieur au numéro de fin");
-      return;
-    }
-    
-    const overlapError = checkOverlap(startTable, endTable, groupId);
-    if (overlapError) {
-      alert(`⚠️ Impossible d'assigner ces tables: ${overlapError}`);
-      return;
-    }
-    
-    const availableTables = [];
-    for (let i = startTable; i <= endTable; i++) {
-      const tableExists = tables.find(t => t.number === i);
-      if (tableExists) {
-        availableTables.push(i);
+
+  const assignTablesToGroup = async (groupId, startTable, endTable) => {
+    try {
+      console.log('🟦 [assignTablesToGroup] START');
+      console.log('  groupId:', groupId);
+      console.log('  startTable:', startTable);
+      console.log('  endTable:', endTable);
+
+      if (startTable > endTable) {
+        alert("⚠️ Le numéro de début doit être inférieur au numéro de fin");
+        return;
       }
-    }
-    
-    if (availableTables.length === 0) {
-      alert("⚠️ Aucune table dans cette plage. Ajoutez des tables d'abord.");
-      return;
-    }
-    
-    const updatedGroups = groups.map(group => {
-      if (group.id === groupId) {
-        return {
-          ...group,
-          tableIds: availableTables,
-          tableRange: { start: startTable, end: endTable }
-        };
+
+      const overlapError = checkOverlap(startTable, endTable, groupId);
+      if (overlapError) {
+        alert(`⚠️ Impossible d'assigner ces tables: ${overlapError}`);
+        return;
       }
-      return group;
-    });
-    setGroups(updatedGroups);
-    
-    const updatedTables = tables.map(table => {
-      if (table.number >= startTable && table.number <= endTable) {
-        return { ...table, groupId };
+
+      const availableTables = [];
+      for (let i = startTable; i <= endTable; i++) {
+        const tableExists = tables.find(t => t.number === i);
+        if (tableExists) {
+          availableTables.push(i);
+        }
       }
-      return table;
-    });
-    setTables(updatedTables);
-    
-    alert(`✅ Tables ${startTable} à ${endTable} assignées au groupe ${groupId}`);
+
+      if (availableTables.length === 0) {
+        alert("⚠️ Aucune table dans cette plage. Ajoutez des tables d'abord.");
+        return;
+      }
+
+      console.log('🟨 Appel API assignTablesToGroup');
+      const response = await apiGestionX.assignTablesToGroup(groupId, startTable, endTable);
+      console.log('✅ Tables assignées (backend):', response);
+
+      // Update local state to match backend
+      const updatedGroups = groups.map(group => {
+        if (group.id === groupId) {
+          return {
+            ...group,
+            tableIds: availableTables,
+            tableRange: { start: startTable, end: endTable }
+          };
+        }
+        return group;
+      });
+      setGroups(updatedGroups);
+
+      const updatedTables = tables.map(table => {
+        if (table.number >= startTable && table.number <= endTable) {
+          return { ...table, groupId };
+        }
+        return table;
+      });
+      setTables(updatedTables);
+
+      alert(`✅ Tables ${startTable} à ${endTable} assignées au groupe ${groupId}`);
+    } catch (error) {
+      console.error('❌ Erreur assignation tables:', error);
+      alert(`❌ Échec: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   // ==================== FUNCTIONS EMPLOYEES ====================
-  const assignEmployeeToGroup = (employeeId, groupId) => {
-    const updatedEmployees = employees.map(emp => {
-      if (emp.id === employeeId) {
-        return { ...emp, groupId };
-      }
-      return emp;
-    });
-    setEmployees(updatedEmployees);
-    
+  const assignEmployeeToGroup = async (employeeId, groupId) => {
+    const managerId = localStorage.getItem('userId');
     const employee = employees.find(e => e.id === employeeId);
-    const group = groups.find(g => g.id === groupId);
-    alert(`✅ ${employee?.name} assigné au ${group?.name}`);
+    const previousGroupId = employee?.groupId ? (typeof employee.groupId === 'object' ? employee.groupId._id || employee.groupId.id : employee.groupId) : null;
+    const newGroupId = groupId || null;
+
+    if (previousGroupId === newGroupId) return;
+
+    try {
+      if (previousGroupId) {
+        await apiGestionX.removeWorkerFromGroupe(managerId, previousGroupId, employeeId);
+      }
+
+      if (newGroupId) {
+        await apiGestionX.assignWorkerToGroupe(managerId, newGroupId, employeeId);
+      }
+
+      const updatedEmployees = employees.map(emp => {
+        if (emp.id === employeeId) {
+          return { ...emp, groupId: newGroupId };
+        }
+        return emp;
+      });
+      setEmployees(updatedEmployees);
+
+      const group = groups.find(g => g.id === newGroupId);
+      alert(`✅ ${employee?.name} assigné au ${group?.name || 'aucun groupe'}`);
+    } catch (error) {
+      console.error('❌ Erreur assignation employé au groupe:', error);
+      alert(`❌ Échec de l'assignation: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   // ==================== FUNCTIONS MENU ====================
   const handleProductImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setProductImageFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
-        setNewProduct({ ...newProduct, image: event.target.result });
         setProductImagePreview(event.target.result);
       };
       reader.readAsDataURL(file);
+    } else {
+      setProductImageFile(null);
+      setProductImagePreview("");
     }
   };
-  
+
   const handleEditProductImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setTempProductImageFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setTempProductData({ ...tempProductData, image: event.target.result });
         setTempProductImagePreview(event.target.result);
       };
       reader.readAsDataURL(file);
+    } else {
+      setTempProductImageFile(null);
+      setTempProductImagePreview(tempProductData.image || "");
     }
   };
-  
-  const addProduct = () => {
+
+  const addProduct = async () => {
     if (!newProduct.name || newProduct.price <= 0) {
       alert("⚠️ Veuillez entrer un nom et un prix valide");
       return;
     }
-    
+
     if (!selectedCategoryForProduct) {
       alert("⚠️ Veuillez sélectionner une catégorie");
       return;
     }
-    
-    const defaultImage = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300";
-    
-    const updatedCategories = menuCategories.map(cat => {
-      if (cat.id === selectedCategoryForProduct) {
-        const newId = Math.max(...cat.products.map(p => p.id), 0) + 1;
-        return {
-          ...cat,
-          products: [...cat.products, { 
-            ...newProduct, 
-            id: newId, 
-            image: newProduct.image || defaultImage 
-          }]
-        };
-      }
-      return cat;
-    });
-    setMenuCategories(updatedCategories);
-    
-    setNewProduct({ name: "", price: 0, image: "", description: "" });
-    setProductImagePreview("");
-    setSelectedCategoryForProduct(null);
-    alert(`✅ Produit "${newProduct.name}" ajouté avec succès`);
+
+    if (!restaurantData.id) {
+      alert("⚠️ Restaurant non chargé. Veuillez actualiser la page.");
+      return;
+    }
+
+    const selectedCategory = menuCategories.find(cat => String(cat.id) === String(selectedCategoryForProduct));
+    const normalizeCategory = (name) => {
+      if (!name) return 'plat';
+      const key = name.trim().toLowerCase();
+      const map = {
+        plats: 'plat',
+        plat: 'plat',
+        boissons: 'boisson',
+        boisson: 'boisson',
+        chicha: 'chicha',
+        desserts: 'dessert',
+        dessert: 'dessert'
+      };
+      return map[key] || 'plat';
+    };
+    const formData = new FormData();
+    formData.append('name', newProduct.name);
+    formData.append('prix', newProduct.price);
+    formData.append('description', newProduct.description);
+    formData.append('categorie', normalizeCategory(selectedCategory?.name));
+    formData.append('sousCategorie', "");
+    if (selectedCategory?.id) {
+      formData.append('category', selectedCategory.id);
+    }
+    if (productImageFile) {
+      formData.append('image', productImageFile);
+    } else {
+      formData.append('image', "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300");
+    }
+
+    try {
+      const response = await apiGestionX.addProduct(restaurantData.id, formData);
+      const createdProduct = response.product || response;
+      const updatedCategories = menuCategories.map(cat => {
+        if (String(cat.id) === String(selectedCategoryForProduct)) {
+          return {
+            ...cat,
+            products: [...cat.products, {
+              id: createdProduct._id || createdProduct.id || Math.random().toString(36).slice(2),
+              name: createdProduct.name,
+              price: createdProduct.prix || createdProduct.price || newProduct.price,
+              image: createdProduct.image || newProduct.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300",
+              description: createdProduct.description || newProduct.description
+            }]
+          };
+        }
+        return cat;
+      });
+      setMenuCategories(updatedCategories);
+
+      setNewProduct({ name: "", price: 0, image: "", description: "" });
+      setProductImageFile(null);
+      setProductImagePreview("");
+      setSelectedCategoryForProduct(null);
+      setShowAddProductModal(false);
+      alert(`✅ Produit "${newProduct.name}" ajouté avec succès`);
+    } catch (error) {
+      console.error('Erreur addProduct:', error);
+      alert(`❌ Impossible d'ajouter le produit: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   const deleteProduct = () => {
     if (currentProduct) {
       const updatedCategories = menuCategories.map(cat => {
@@ -456,20 +743,20 @@ export default function ManagerProfile() {
         return cat;
       });
       setMenuCategories(updatedCategories);
-      
+
       if (currentProductIndex >= updatedCategories.find(c => c.id === selectedCategoryId)?.products.length) {
         setCurrentProductIndex(0);
       }
-      
+
       setShowDeleteConfirmModal(false);
       alert(`✅ Produit "${currentProduct.name}" supprimé avec succès`);
     }
   };
-  
+
   const openDeleteConfirmModal = () => {
     setShowDeleteConfirmModal(true);
   };
-  
+
   const openEditProductModal = () => {
     if (currentProduct) {
       setEditingProduct(currentProduct);
@@ -480,43 +767,85 @@ export default function ManagerProfile() {
         image: currentProduct.image || "",
         description: currentProduct.description || ""
       });
+      setTempProductImageFile(null);
       setTempProductImagePreview(currentProduct.image || "");
       setShowEditProductModal(true);
     }
   };
-  
-  const updateProduct = () => {
+
+  const updateProduct = async () => {
     if (!tempProductData.name || tempProductData.price <= 0) {
       alert("⚠️ Veuillez entrer un nom et un prix valide");
       return;
     }
-    
+
+    if (!editingProduct) {
+      alert("⚠️ Aucun produit sélectionné pour modification");
+      return;
+    }
+
     const defaultImage = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300";
-    
-    const updatedCategories = menuCategories.map(cat => {
-      if (cat.id === editingCategoryId) {
-        return {
-          ...cat,
-          products: cat.products.map(p => 
-            p.id === editingProduct.id ? { 
-              ...p, 
-              name: tempProductData.name,
-              price: tempProductData.price,
-              image: tempProductData.image || defaultImage,
-              description: tempProductData.description
-            } : p
-          )
-        };
-      }
-      return cat;
-    });
-    setMenuCategories(updatedCategories);
-    setShowEditProductModal(false);
-    setEditingProduct(null);
-    setEditingCategoryId(null);
-    alert(`✅ Produit "${tempProductData.name}" mis à jour avec succès`);
+    const normalizeCategory = (name) => {
+      if (!name) return 'plat';
+      const key = name.trim().toLowerCase();
+      const map = {
+        plats: 'plat',
+        plat: 'plat',
+        boissons: 'boisson',
+        boisson: 'boisson',
+        chicha: 'chicha',
+        desserts: 'dessert',
+        dessert: 'dessert'
+      };
+      return map[key] || 'plat';
+    };
+
+    const formData = new FormData();
+    formData.append('name', tempProductData.name);
+    formData.append('prix', tempProductData.price);
+    formData.append('description', tempProductData.description);
+    formData.append('categorie', normalizeCategory(selectedCategory?.name));
+    formData.append('sousCategorie', tempProductData.sousCategorie || "");
+
+    if (tempProductImageFile) {
+      formData.append('image', tempProductImageFile);
+    } else {
+      formData.append('image', tempProductData.image || defaultImage);
+    }
+
+    try {
+      const response = await apiGestionX.updateProduct(editingProduct.id, formData);
+      const updatedProduct = response.product || response;
+      const updatedCategories = menuCategories.map(cat => {
+        if (cat.id === editingCategoryId) {
+          return {
+            ...cat,
+            products: cat.products.map(p =>
+              p.id === editingProduct.id ? {
+                ...p,
+                name: updatedProduct.name,
+                price: updatedProduct.prix || updatedProduct.price || tempProductData.price,
+                image: updatedProduct.image || tempProductData.image || defaultImage,
+                description: updatedProduct.description || tempProductData.description
+              } : p
+            )
+          };
+        }
+        return cat;
+      });
+      setMenuCategories(updatedCategories);
+      setShowEditProductModal(false);
+      setEditingProduct(null);
+      setEditingCategoryId(null);
+      setTempProductImageFile(null);
+      setTempProductImagePreview("");
+      alert(`✅ Produit "${updatedProduct.name}" mis à jour avec succès`);
+    } catch (error) {
+      console.error('Erreur updateProduct:', error);
+      alert(`❌ Impossible de mettre à jour le produit: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   // Carousel navigation
   const nextProduct = () => {
     if (currentProductIndex < currentProducts.length - 1) {
@@ -527,7 +856,7 @@ export default function ManagerProfile() {
     setSwipeDirection("next");
     setTimeout(() => setSwipeDirection(null), 300);
   };
-  
+
   const prevProduct = () => {
     if (currentProductIndex > 0) {
       setCurrentProductIndex(currentProductIndex - 1);
@@ -537,20 +866,20 @@ export default function ManagerProfile() {
     setSwipeDirection("prev");
     setTimeout(() => setSwipeDirection(null), 300);
   };
-  
+
   // ==================== DRAG/SWIPE FUNCTIONS ====================
   const handleDragStart = (e) => {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     setDragStartX(clientX);
     setIsDragging(true);
   };
-  
+
   const handleDragEnd = (e) => {
     if (!isDragging) return;
-    
+
     const endX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
     const dragDistance = dragStartX - endX;
-    
+
     if (Math.abs(dragDistance) > 50) {
       if (dragDistance > 0) {
         nextProduct();
@@ -558,48 +887,96 @@ export default function ManagerProfile() {
         prevProduct();
       }
     }
-    
+
     setIsDragging(false);
   };
-  
+
   const handleDragMove = (e) => {
     if (!isDragging) return;
     e.preventDefault();
   };
-  
+
   // ==================== FUNCTIONS RESTAURANT ====================
   const handleRestaurantLogoFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setRestaurantLogoFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setTempRestaurantData(prev => ({ ...prev, logo: event.target.result }));
       };
       reader.readAsDataURL(file);
+    } else {
+      setRestaurantLogoFile(null);
     }
   };
-  
+
   const handleRestaurantImageFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setRestaurantImageFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setTempRestaurantData(prev => ({ ...prev, image: event.target.result }));
       };
       reader.readAsDataURL(file);
+    } else {
+      setRestaurantImageFile(null);
     }
   };
-  
-  const updateRestaurantCard = () => {
-    setRestaurantData({ ...tempRestaurantData });
-    setShowEditRestaurantModal(false);
-    alert(`✅ Carte du restaurant mise à jour avec succès`);
+
+  const updateRestaurantCard = async () => {
+    if (!restaurantData.id) {
+      alert('⚠️ Restaurant non chargé. Veuillez actualiser la page.');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('name', tempRestaurantData.name || '');
+      formData.append('location', tempRestaurantData.location || '');
+      formData.append('description', tempRestaurantData.description || '');
+      formData.append('phone', tempRestaurantData.phone || '');
+      formData.append('email', tempRestaurantData.email || '');
+      if (restaurantLogoFile) {
+        formData.append('logo', restaurantLogoFile);
+      }
+      if (restaurantImageFile) {
+        formData.append('image', restaurantImageFile);
+      }
+
+      const response = await apiGestionX.updateRestaurantInfo(restaurantData.id, formData);
+      const updatedRestaurant = response.restaurant || response;
+
+      setRestaurantData(prev => ({
+        ...prev,
+        name: updatedRestaurant.name || tempRestaurantData.name,
+        location: updatedRestaurant.location || tempRestaurantData.location,
+        description: updatedRestaurant.description || tempRestaurantData.description,
+        phone: updatedRestaurant.phone || tempRestaurantData.phone,
+        email: updatedRestaurant.email || tempRestaurantData.email,
+        logo: updatedRestaurant.logo || tempRestaurantData.logo,
+        image: updatedRestaurant.image || tempRestaurantData.image
+      }));
+      setTempRestaurantData(prev => ({
+        ...prev,
+        logo: updatedRestaurant.logo || prev.logo,
+        image: updatedRestaurant.image || prev.image
+      }));
+      setRestaurantLogoFile(null);
+      setRestaurantImageFile(null);
+      setShowEditRestaurantModal(false);
+      alert('✅ Carte du restaurant mise à jour avec succès');
+    } catch (error) {
+      console.error('Erreur updateRestaurantCard:', error);
+      alert(`❌ Impossible de sauvegarder les informations du restaurant: ${error?.message || JSON.stringify(error)}`);
+    }
   };
-  
+
   // ==================== FUNCTIONS INVOICES ====================
-  const toggleInvoices = () => {
+  const toggleInvoices = async () => {
     if (!showInvoices) {
-      generateInvoice();
+      await generateInvoice();
     } else {
       setShowInvoices(false);
       setInvoices([]);
@@ -607,150 +984,96 @@ export default function ManagerProfile() {
       setRestaurantInvoice(null);
     }
   };
-  
-  const generateInvoice = () => {
-    const mockInvoices = [];
-    const mockGroupInvoices = [];
-    
-    if (filterType === "daily") {
-      for (let i = 1; i <= 20; i++) {
-        const groupId = i <= 9 ? 1 : (i <= 16 ? 2 : 3);
-        mockInvoices.push({
-          id: i,
-          tableNumber: i,
-          groupId: groupId,
-          groupName: groups.find(g => g.id === groupId)?.name || `Groupe ${groupId}`,
-          total: Math.floor(Math.random() * 500 + 100),
-          items: Math.floor(Math.random() * 5 + 1),
-          date: selectedDate,
-          time: `${Math.floor(Math.random() * 12 + 10)}:${Math.floor(Math.random() * 60)}`
-        });
+
+  const generateInvoice = async () => {
+    try {
+      const restaurantId = restaurantData.id;
+      if (!restaurantId) {
+        alert('⚠️ Restaurant non chargé');
+        return;
       }
-      
-      const groupTotals = {};
-      mockInvoices.forEach(inv => {
-        if (!groupTotals[inv.groupId]) {
-          groupTotals[inv.groupId] = {
-            groupId: inv.groupId,
-            groupName: inv.groupName,
-            total: 0,
-            tableCount: 0,
-            orderCount: 0
-          };
-        }
-        groupTotals[inv.groupId].total += inv.total;
-        groupTotals[inv.groupId].tableCount++;
-        groupTotals[inv.groupId].orderCount += inv.items;
-      });
-      mockGroupInvoices.push(...Object.values(groupTotals));
-      
-      const restaurantTotal = mockInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      setRestaurantInvoice({
-        total: restaurantTotal,
-        tableCount: mockInvoices.length,
-        orderCount: mockInvoices.reduce((sum, inv) => sum + inv.items, 0),
-        date: selectedDate
-      });
-      
-    } else if (filterType === "monthly") {
-      for (let i = 1; i <= 20; i++) {
-        const groupId = i <= 9 ? 1 : (i <= 16 ? 2 : 3);
-        for (let day = 1; day <= 30; day++) {
-          if (Math.random() > 0.7) {
-            mockInvoices.push({
-              id: `${i}_${day}`,
-              tableNumber: i,
-              groupId: groupId,
-              groupName: groups.find(g => g.id === groupId)?.name || `Groupe ${groupId}`,
-              total: Math.floor(Math.random() * 500 + 100),
-              items: Math.floor(Math.random() * 5 + 1),
-              date: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            });
-          }
-        }
+
+      let params = {};
+
+      if (filterType === 'daily') {
+        params = {
+          startDate: `${selectedDate}T00:00:00.000Z`,
+          endDate: `${selectedDate}T23:59:59.999Z`
+        };
+      } else if (filterType === 'monthly') {
+        const start = new Date(selectedYear, selectedMonth, 1);
+        const end = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+        params = {
+          startDate: start.toISOString(),
+          endDate: end.toISOString()
+        };
+      } else if (filterType === 'seasonal') {
+        const seasonMonths = {
+          spring: [2, 3, 4],
+          summer: [5, 6, 7],
+          autumn: [8, 9, 10],
+          winter: [11, 0, 1]
+        };
+        const months = seasonMonths[selectedSeason];
+        const startMonth = months[0];
+        const endMonth = months[2];
+        const startYear = startMonth > endMonth ? selectedYear - 1 : selectedYear;
+        const start = new Date(startYear, startMonth, 1);
+        const end = new Date(selectedYear, endMonth + 1, 0, 23, 59, 59);
+        params = {
+          startDate: start.toISOString(),
+          endDate: end.toISOString()
+        };
       }
-      
-      const groupTotals = {};
-      mockInvoices.forEach(inv => {
-        if (!groupTotals[inv.groupId]) {
-          groupTotals[inv.groupId] = {
-            groupId: inv.groupId,
-            groupName: inv.groupName,
-            total: 0,
-            tableCount: 0,
-            orderCount: 0
-          };
-        }
-        groupTotals[inv.groupId].total += inv.total;
-        groupTotals[inv.groupId].tableCount++;
-        groupTotals[inv.groupId].orderCount += inv.items;
+
+      // Fetch per-table invoices
+      const tableResp = await apiGestionX.getInvoicesWithFilters(restaurantId, {
+        ...params,
+        groupBy: 'table'
       });
-      mockGroupInvoices.push(...Object.values(groupTotals));
-      
-      const restaurantTotal = mockInvoices.reduce((sum, inv) => sum + inv.total, 0);
+
+      // Fetch per-group invoices
+      const groupResp = await apiGestionX.getInvoicesWithFilters(restaurantId, {
+        ...params,
+        groupBy: 'groupe'
+      });
+
+      // Map table invoices
+      const mappedInvoices = (tableResp.data || []).map((item, index) => ({
+        id: item.table?._id || index,
+        tableNumber: item.table?.numero || '?',
+        groupId: item.table?.groupe || null,
+        groupName: groups.find(g => g.id === item.table?.groupe)?.name || '',
+        total: item.total || 0,
+        items: item.invoices?.length || 0
+      }));
+
+      // Map group invoices
+      const mappedGroupInvoices = (groupResp.data || []).map((item) => ({
+        groupId: item.groupe?._id || '',
+        groupName: item.groupe?.nomgroupe || 'Groupe',
+        total: item.total || 0,
+        tableCount: item.invoices?.length || 0
+      }));
+
+      setInvoices(mappedInvoices);
+      setGroupInvoices(mappedGroupInvoices);
       setRestaurantInvoice({
-        total: restaurantTotal,
-        tableCount: mockInvoices.length,
-        orderCount: mockInvoices.reduce((sum, inv) => sum + inv.items, 0),
-        month: selectedMonth + 1,
-        year: selectedYear
+        total: tableResp.total || 0,
+        tableCount: tableResp.count || 0
       });
-      
-    } else {
-      const months = selectedSeason === "spring" ? [2, 3, 4] : selectedSeason === "summer" ? [5, 6, 7] : selectedSeason === "autumn" ? [8, 9, 10] : [11, 0, 1];
-      for (let i = 1; i <= 20; i++) {
-        const groupId = i <= 9 ? 1 : (i <= 16 ? 2 : 3);
-        for (let day = 1; day <= 90; day++) {
-          if (Math.random() > 0.85) {
-            mockInvoices.push({
-              id: `${i}_${day}`,
-              tableNumber: i,
-              groupId: groupId,
-              groupName: groups.find(g => g.id === groupId)?.name || `Groupe ${groupId}`,
-              total: Math.floor(Math.random() * 500 + 100),
-              items: Math.floor(Math.random() * 5 + 1),
-              date: `${selectedYear}-${String(months[Math.floor(Math.random() * months.length)] + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`
-            });
-          }
-        }
-      }
-      
-      const groupTotals = {};
-      mockInvoices.forEach(inv => {
-        if (!groupTotals[inv.groupId]) {
-          groupTotals[inv.groupId] = {
-            groupId: inv.groupId,
-            groupName: inv.groupName,
-            total: 0,
-            tableCount: 0,
-            orderCount: 0
-          };
-        }
-        groupTotals[inv.groupId].total += inv.total;
-        groupTotals[inv.groupId].tableCount++;
-        groupTotals[inv.groupId].orderCount += inv.items;
-      });
-      mockGroupInvoices.push(...Object.values(groupTotals));
-      
-      const restaurantTotal = mockInvoices.reduce((sum, inv) => sum + inv.total, 0);
-      setRestaurantInvoice({
-        total: restaurantTotal,
-        tableCount: mockInvoices.length,
-        orderCount: mockInvoices.reduce((sum, inv) => sum + inv.items, 0),
-        season: selectedSeason === "spring" ? "Printemps" : selectedSeason === "summer" ? "Été" : selectedSeason === "autumn" ? "Automne" : "Hiver",
-        year: selectedYear
-      });
+      setShowInvoices(true);
+
+    } catch (error) {
+      console.error('❌ Erreur chargement factures:', error);
+      alert(`❌ Impossible de charger les factures: ${error?.message}`);
     }
-    
-    setInvoices(mockInvoices);
-    setGroupInvoices(mockGroupInvoices);
-    setShowInvoices(true);
   };
-  
+
   const getTotalRevenue = () => {
     return invoices.reduce((sum, inv) => sum + inv.total, 0);
   };
-  
+
   // ==================== STYLES ====================
   const style = `
     @keyframes gradientShift {
@@ -1713,8 +2036,8 @@ export default function ManagerProfile() {
   return (
     <>
       <style>{style}</style>
-      
-      <IndexNavbar 
+
+      <IndexNavbar
         managerInfo={managerInfo}
         onUpdateProfile={(updatedInfo) => {
           setManagerInfo(updatedInfo);
@@ -1724,7 +2047,7 @@ export default function ManagerProfile() {
           window.location.href = "/";
         }}
       />
-      
+
       <div className="profile-hero-section">
         <div className="shooting-stars">
           {[...Array(60)].map((_, i) => (
@@ -1750,22 +2073,22 @@ export default function ManagerProfile() {
             }} />
           ))}
         </div>
-        
+
         <main style={{ position: 'relative', zIndex: 10 }}>
           <section className="relative block" style={{ height: "350px", position: 'relative', overflow: 'hidden' }}>
-            <div className="hero-image" style={{ 
+            <div className="hero-image" style={{
               backgroundImage: `url(${managerInfo.coverImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center 40%'
             }}></div>
             <div className="hero-overlay"></div>
           </section>
-          
+
           <section className="relative py-16 bg-transparent">
             <div className="container mx-auto px-4">
               <div className="relative flex flex-col min-w-0 break-words bg-white-card w-full mb-6 shadow-xl rounded-lg -mt-48">
                 <div className="px-6">
-                  
+
                   <div className="flex flex-wrap justify-center">
                     <div className="w-full lg:w-3/12 px-4 lg:order-2 flex justify-center">
                       <div className="profile-image-wrapper" style={{ position: 'relative' }}>
@@ -1776,7 +2099,7 @@ export default function ManagerProfile() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-center mt-12">
                     <h3 className="text-4xl font-semibold leading-normal mb-2 profile-info-text">
                       {managerInfo.name}
@@ -1792,31 +2115,31 @@ export default function ManagerProfile() {
                       <i className="fas fa-calendar-alt mr-2 text-green-400"></i> {managerInfo.experience}
                     </div>
                   </div>
-                  
+
                   <div className="action-buttons">
                     <button className="btn-contact" onClick={() => alert(`📧 Email: ${managerInfo.email}\n📱 Téléphone: ${managerInfo.phone}`)}>
                       📧 Contacter
                     </button>
                   </div>
-                  
+
                   <div className="manager-cards-container">
-                    
+
                     {/* المربع 1: إدارة الطاولات */}
                     <div className="manager-card">
                       <div className="card-title"><span>🍽️</span> Gestion des tables</div>
-                      
+
                       <div className="input-group">
                         <label>📊 Nombre de nouvelles tables à ajouter :</label>
                         <input type="number" min="1" max="50" value={newTableCount} onChange={(e) => setNewTableCount(parseInt(e.target.value))} />
                       </div>
                       <button className="btn-primary" onClick={addTables}>➕ Ajouter des tables</button>
-                      
+
                       <div className="delete-section">
                         <label className="delete-label">🗑️ Supprimer une table :</label>
                         <div className="input-group" style={{ marginTop: '5px' }}>
-                          <input 
-                            type="number" 
-                            placeholder="Ex: 12" 
+                          <input
+                            type="number"
+                            placeholder="Ex: 12"
                             value={singleTableToDelete}
                             onChange={(e) => setSingleTableToDelete(e.target.value)}
                           />
@@ -1825,14 +2148,14 @@ export default function ManagerProfile() {
                           🗑️ Supprimer la table
                         </button>
                       </div>
-                      
+
                       <div className="delete-section">
                         <label className="delete-label">🗑️ Supprimer plusieurs tables :</label>
                         <div className="input-group" style={{ marginTop: '5px' }}>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             id="multipleTablesToDelete"
-                            placeholder="Ex: 1,2,3 ou 1-5" 
+                            placeholder="Ex: 1,2,3 ou 1-5"
                           />
                         </div>
                         <button className="btn-danger" style={{ width: '100%' }} onClick={deleteMultipleTables}>
@@ -1840,19 +2163,24 @@ export default function ManagerProfile() {
                         </button>
                         <p className="info-text">💡 Entrez les numéros séparés par des virgules (1,2,3) ou une plage (1-5)</p>
                       </div>
-                      
+
                       <div className="table-list">
                         <h4 style={{ color: 'white', marginBottom: '10px' }}>📋 Liste des tables ({tables.length}) :</h4>
-                        {tables.map(table => (
-                          <div key={table.id} className="table-item">
-                            <span>🍽️ Table n° {table.number}</span>
-                            <button className="qr-placeholder-btn" onClick={() => showQRPlaceholderFunc(table)}>📱 QR Code</button>
-                          </div>
-                        ))}
-                        {tables.length === 0 && <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>⚠️ Aucune table disponible</p>}
+                        {tables && tables.length > 0 ? (
+                          tables.map(table => {
+                            return (
+                              <div key={table.id} className="table-item">
+                                <span>🍽️ Table n° {table.number}</span>
+                                <button className="qr-placeholder-btn" onClick={() => showQRPlaceholderFunc(table)}>📱 QR Code</button>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>⚠️ Aucune table disponible</p>
+                        )}
                       </div>
                     </div>
-                    
+
                     {/* المربع 2: إدارة المجموعات */}
                     <div className="manager-card">
                       <div className="card-title"><span>👥</span> Gestion des groupes</div>
@@ -1884,86 +2212,104 @@ export default function ManagerProfile() {
                       </div>
                       <p className="info-text">⚠️ Une table ne peut pas appartenir à deux groupes différents</p>
                     </div>
-                    
+
                     {/* المربع 3: إدارة الموظفين */}
                     <div className="manager-card">
                       <div className="card-title">
                         <span>👨‍🍳</span> Gestion des employés
-                        <button 
+                        <button
                           className="add-employee-btn"
                           onClick={() => history.push("/employees")}
                         >
                           ➕ Ajouter un employé
                         </button>
                       </div>
-                      
+
                       <div className="employee-list">
-                        <h4 style={{ color: 'white', marginBottom: '10px' }}>📋 Liste des employés ({employees.length}) :</h4>
-                        {employees.map(emp => (
-                          <div key={emp.id} className="employee-item">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <img 
-                                src={emp.profileImage} 
-                                alt={emp.name}
-                                style={{
-                                  width: '35px',
-                                  height: '35px',
-                                  borderRadius: '50%',
-                                  objectFit: 'cover',
-                                  border: '2px solid #22c55e'
-                                }}
-                              />
-                              <span style={{ color: 'white', fontWeight: 'bold' }}>{emp.name}</span>
+                        <h4 style={{ color: 'white', marginBottom: '10px' }}>📋 Liste des employés ({restaurantEmployees.length}) :</h4>
+                        {restaurantEmployees.length === 0 ? (
+                          <p style={{ color: 'white', marginTop: '10px' }}>Aucun employé lié à ce restaurant pour le moment.</p>
+                        ) : (
+                          restaurantEmployees.map(emp => (
+                            <div
+                              key={emp.id}
+                              className="employee-item"
+                              onClick={() => history.push("/profileemploye", { employee: emp })}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <img
+                                  src={emp.profileImage}
+                                  alt={emp.name}
+                                  style={{
+                                    width: '35px',
+                                    height: '35px',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    border: '2px solid #22c55e'
+                                  }}
+                                />
+                                <span style={{ color: 'white', fontWeight: 'bold' }}>{emp.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <select
+                                  value={emp.groupId || ""}
+                                  onChange={(e) => { e.stopPropagation(); assignEmployeeToGroup(emp.id, e.target.value); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    background: 'rgba(34,197,94,0.2)',
+                                    border: '1px solid #22c55e',
+                                    borderRadius: '10px',
+                                    padding: '5px',
+                                    color: 'white',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <option value="">Sans groupe</option>
+                                  {groups.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  className="evaluate-btn"
+                                  onClick={(e) => { e.stopPropagation(); history.push(`/employee-evaluation/${emp.id}`, { employee: emp }); }}
+                                >
+                                  ✏️ Évaluer
+                                </button>
+                                <button
+                                  className="delete-employee-btn"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${emp.name} ?`)) {
+                                      try {
+                                        const managerId = localStorage.getItem('userId');
+                                        await apiGestionX.fireWorker(managerId, emp.id);
+                                        setEmployees(employees.filter(e => e.id !== emp.id));
+                                        alert(`✅ ${emp.name} a été supprimé`);
+                                      } catch (error) {
+                                        console.error('❌ Erreur suppression employé:', error);
+                                        alert(`❌ Échec de la suppression: ${error?.message || JSON.stringify(error)}`);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  🗑️ Supprimer
+                                </button>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <select 
-                                value={emp.groupId || ""} 
-                                onChange={(e) => { 
-                                  assignEmployeeToGroup(emp.id, parseInt(e.target.value)); 
-                                }}
-                                style={{ 
-                                  background: 'rgba(34,197,94,0.2)', 
-                                  border: '1px solid #22c55e', 
-                                  borderRadius: '10px', 
-                                  padding: '5px', 
-                                  color: 'white',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <option value="">Sans groupe</option>
-                                {groups.map(g => (<option key={g.id} value={g.id}>{g.name}</option>))}
-                              </select>
-                              <button 
-                                className="evaluate-btn"
-                                onClick={() => history.push(`/employee-evaluation/${emp.id}`, { employee: emp })}
-                              >
-                                ✏️ Évaluer
-                              </button>
-                              <button 
-                                className="delete-employee-btn"
-                                onClick={() => {
-                                  if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${emp.name} ?`)) {
-                                    setEmployees(employees.filter(e => e.id !== emp.id));
-                                    alert(`✅ ${emp.name} a été supprimé`);
-                                  }
-                                }}
-                              >
-                                🗑️ Supprimer
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
-                      
+
                       <p className="info-text" style={{ marginTop: '10px', fontSize: '0.7rem' }}>
                         💡 Cliquez sur "Évaluer" pour évaluer l'employé
                       </p>
                     </div>
-                    
+
                     {/* المربع 4: تعديل المنيو */}
                     <div className="manager-card">
                       <div className="card-title"><span>📝</span> Gestion du menu</div>
-                      
+
                       <div className="category-tabs">
                         {menuCategories.map(cat => (
                           <button
@@ -1979,8 +2325,8 @@ export default function ManagerProfile() {
                           </button>
                         ))}
                       </div>
-                      
-                      <div 
+
+                      <div
                         className="carousel-container"
                         onMouseDown={handleDragStart}
                         onMouseUp={handleDragEnd}
@@ -2006,7 +2352,7 @@ export default function ManagerProfile() {
                           </div>
                         )}
                       </div>
-                      
+
                       {currentProducts.length > 1 && (
                         <>
                           <div className="carousel-navigation">
@@ -2021,7 +2367,7 @@ export default function ManagerProfile() {
                           </div>
                         </>
                       )}
-                      
+
                       <div className="menu-actions">
                         <button className="add-product-btn" onClick={() => setShowAddProductModal(true)}>
                           ➕ Ajouter un produit
@@ -2038,11 +2384,11 @@ export default function ManagerProfile() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* المربع 5: كرت المطعم */}
                     <div className="manager-card">
                       <div className="card-title"><span>🏪</span> Carte du restaurant</div>
-                      <RestaurantCard 
+                      <RestaurantCard
                         restaurant={restaurantData}
                         isEditable={false}
                         showActions={false}
@@ -2054,7 +2400,7 @@ export default function ManagerProfile() {
                         ✏️ Modifier les informations
                       </button>
                     </div>
-                    
+
                     {/* المربع 6: الفواتير */}
                     <div className="manager-card">
                       <div className="card-title"><span>📊</span> Gestion des factures</div>
@@ -2112,7 +2458,7 @@ export default function ManagerProfile() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mt-10 py-10 border-t border-white/20 text-center">
                     <div className="flex flex-wrap justify-center">
                       <div className="w-full lg:w-9/12 px-4">
@@ -2126,44 +2472,54 @@ export default function ManagerProfile() {
                       </div>
                     </div>
                   </div>
-                  
+
                 </div>
               </div>
             </div>
           </section>
         </main>
       </div>
-      
+
       {/* Modal Confirmation QR */}
       {showQRPlaceholder && selectedTableForQR && (
         <div className="modal-overlay" onClick={() => setShowQRPlaceholder(false)}>
-          <div className="modal-content">
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>📱 Code QR - Table {selectedTableForQR.number}</h2>
-            <div className="qr-placeholder-box">
-              <div style={{ fontSize: '4rem' }}>📱</div>
-              <p style={{ color: '#22c55e' }}>Code QR pour la table {selectedTableForQR.number}</p>
+            <div className="qr-placeholder-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+              {selectedTableForQR.qrCodeImage ? (
+                <img
+                  src={selectedTableForQR.qrCodeImage.startsWith('data:') ? selectedTableForQR.qrCodeImage : `data:image/png;base64,${selectedTableForQR.qrCodeImage}`}
+                  alt={`QR code table ${selectedTableForQR.number}`}
+                  style={{ width: '240px', height: '240px', objectFit: 'contain', borderRadius: '18px', border: '2px solid #22c55e' }}
+                />
+              ) : (
+                <div style={{ fontSize: '4rem' }}>📱</div>
+              )}
+              <p style={{ color: '#22c55e', textAlign: 'center', wordBreak: 'break-word' }}>
+                {selectedTableForQR.qrCode ? `URL: ${selectedTableForQR.qrCode}` : `Code QR pour la table ${selectedTableForQR.number}`}
+              </p>
             </div>
-            <button className="btn-primary" style={{ width: '100%' }} onClick={() => setShowQRPlaceholder(false)}>Fermer</button>
+            <button className="btn-primary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowQRPlaceholder(false)}>Fermer</button>
           </div>
         </div>
       )}
-      
+
       {/* Modal Ajouter un produit */}
       {showAddProductModal && (
         <div className="modal-overlay" onClick={() => setShowAddProductModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ color: 'white', marginBottom: '20px' }}>➕ Ajouter un produit</h2>
-            <div className="input-group"><label>📂 Catégorie :</label><select onChange={(e) => setSelectedCategoryForProduct(parseInt(e.target.value))} value={selectedCategoryForProduct || ""}>
+            <div className="input-group"><label>📂 Catégorie :</label><select onChange={(e) => setSelectedCategoryForProduct(e.target.value)} value={selectedCategoryForProduct || ""}>
               <option value="">Choisir une catégorie</option>
               {menuCategories.map(cat => (<option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>))}
             </select></div>
-            <div className="input-group"><label>📝 Nom du produit :</label><input type="text" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} placeholder="Ex: Pizza Margherita" /></div>
-            <div className="input-group"><label>💰 Prix (DA) :</label><input type="number" value={newProduct.price} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})} placeholder="Ex: 1200" /></div>
-            <div className="input-group"><label>📝 Description :</label><textarea rows="2" value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} placeholder="Description du produit" /></div>
+            <div className="input-group"><label>📝 Nom du produit :</label><input type="text" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Ex: Pizza Margherita" /></div>
+            <div className="input-group"><label>💰 Prix (DA) :</label><input type="number" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: parseFloat(e.target.value) })} placeholder="Ex: 1200" /></div>
+            <div className="input-group"><label>📝 Description :</label><textarea rows="2" value={newProduct.description} onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })} placeholder="Description du produit" /></div>
             <div className="input-group">
               <label>🖼️ Image du produit :</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept="image/*"
                 onChange={handleProductImageChange}
                 style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '15px', color: 'white' }}
@@ -2177,19 +2533,19 @@ export default function ManagerProfile() {
           </div>
         </div>
       )}
-      
+
       {/* Modal Modifier un produit */}
       {showEditProductModal && editingProduct && (
         <div className="modal-overlay" onClick={() => setShowEditProductModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ color: 'white', marginBottom: '20px' }}>✏️ Modifier le produit</h2>
-            <div className="input-group"><label>📝 Nom du produit :</label><input type="text" value={tempProductData.name} onChange={(e) => setTempProductData({...tempProductData, name: e.target.value})} /></div>
-            <div className="input-group"><label>💰 Prix (DA) :</label><input type="number" value={tempProductData.price} onChange={(e) => setTempProductData({...tempProductData, price: parseFloat(e.target.value)})} /></div>
-            <div className="input-group"><label>📝 Description :</label><textarea rows="2" value={tempProductData.description} onChange={(e) => setTempProductData({...tempProductData, description: e.target.value})} /></div>
+            <div className="input-group"><label>📝 Nom du produit :</label><input type="text" value={tempProductData.name} onChange={(e) => setTempProductData({ ...tempProductData, name: e.target.value })} /></div>
+            <div className="input-group"><label>💰 Prix (DA) :</label><input type="number" value={tempProductData.price} onChange={(e) => setTempProductData({ ...tempProductData, price: parseFloat(e.target.value) })} /></div>
+            <div className="input-group"><label>📝 Description :</label><textarea rows="2" value={tempProductData.description} onChange={(e) => setTempProductData({ ...tempProductData, description: e.target.value })} /></div>
             <div className="input-group">
               <label>🖼️ Image du produit :</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept="image/*"
                 onChange={handleEditProductImageChange}
                 style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '15px', color: 'white' }}
@@ -2203,7 +2559,7 @@ export default function ManagerProfile() {
           </div>
         </div>
       )}
-      
+
       {/* Modal Confirmation suppression produit */}
       {showDeleteConfirmModal && currentProduct && (
         <div className="modal-overlay" onClick={() => setShowDeleteConfirmModal(false)}>
@@ -2214,15 +2570,15 @@ export default function ManagerProfile() {
               Voulez-vous vraiment supprimer le produit <strong style={{ color: '#22c55e' }}>"{currentProduct.name}"</strong> ?
             </p>
             <div style={{ display: 'flex', gap: '15px' }}>
-              <button 
-                className="btn-danger" 
+              <button
+                className="btn-danger"
                 style={{ flex: 1, padding: '12px' }}
                 onClick={deleteProduct}
               >
                 🗑️ Oui, supprimer
               </button>
-              <button 
-                className="btn-secondary" 
+              <button
+                className="btn-secondary"
                 style={{ flex: 1, padding: '12px' }}
                 onClick={() => setShowDeleteConfirmModal(false)}
               >
@@ -2232,78 +2588,78 @@ export default function ManagerProfile() {
           </div>
         </div>
       )}
-      
+
       {/* Modal Modifier les informations du restaurant - CORRIGÉ */}
       {showEditRestaurantModal && (
         <div className="modal-overlay" onClick={() => setShowEditRestaurantModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2 style={{ color: 'white' }}>✏️ Modifier les informations du restaurant</h2>
-            
+
             <div className="input-group">
               <label>🏪 Nom :</label>
-              <input 
-                type="text" 
-                value={tempRestaurantData.name} 
-                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, name: e.target.value }))} 
+              <input
+                type="text"
+                value={tempRestaurantData.name}
+                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, name: e.target.value }))}
               />
             </div>
-            
+
             <div className="input-group">
               <label>📍 Location :</label>
-              <input 
-                type="text" 
-                value={tempRestaurantData.location} 
-                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, location: e.target.value }))} 
+              <input
+                type="text"
+                value={tempRestaurantData.location}
+                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, location: e.target.value }))}
               />
             </div>
-            
+
             <div className="input-group">
               <label>📝 Description :</label>
-              <textarea 
-                rows="2" 
-                value={tempRestaurantData.description} 
-                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, description: e.target.value }))} 
+              <textarea
+                rows="2"
+                value={tempRestaurantData.description}
+                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, description: e.target.value }))}
               />
             </div>
-            
+
             <div className="input-group">
               <label>📞 Téléphone :</label>
-              <input 
-                type="text" 
-                value={tempRestaurantData.phone} 
-                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, phone: e.target.value }))} 
+              <input
+                type="text"
+                value={tempRestaurantData.phone}
+                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, phone: e.target.value }))}
               />
             </div>
-            
+
             <div className="input-group">
               <label>📧 Email :</label>
-              <input 
-                type="email" 
-                value={tempRestaurantData.email} 
-                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, email: e.target.value }))} 
+              <input
+                type="email"
+                value={tempRestaurantData.email}
+                onChange={(e) => setTempRestaurantData(prev => ({ ...prev, email: e.target.value }))}
               />
             </div>
-            
+
             <div className="input-group">
               <label>🖼️ Logo (fichier) :</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept="image/*"
                 onChange={handleRestaurantLogoFileChange}
                 style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '15px', color: 'white' }}
               />
             </div>
-            
+
             <div className="input-group">
               <label>🖼️ Image principale (fichier) :</label>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept="image/*"
                 onChange={handleRestaurantImageFileChange}
                 style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '15px', color: 'white' }}
               />
             </div>
-            
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button className="btn-primary" style={{ flex: 1 }} onClick={updateRestaurantCard}>💾 Enregistrer</button>
               <button className="btn-danger" style={{ flex: 1 }} onClick={() => setShowEditRestaurantModal(false)}>❌ Annuler</button>
@@ -2311,7 +2667,7 @@ export default function ManagerProfile() {
           </div>
         </div>
       )}
-      
+
       <SocialFooter socialLinks={socialLinks} />
       <Footer />
     </>

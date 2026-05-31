@@ -2,6 +2,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import RestaurantCard from "components/Common/restaurantCard.js";
+import jobOfferService from "services/jobOfferService";
+import apiUser from "services/apiUser";
 
 export default function AuthNavbar(props) {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
@@ -11,43 +13,8 @@ export default function AuthNavbar(props) {
   const [showJobOffers, setShowJobOffers] = React.useState(false);
   const [showNotification, setShowNotification] = React.useState(false);
   const [notificationMessage, setNotificationMessage] = React.useState("");
-  
-  // ==================== Optimisation des performances ====================
-  const [jobOffers, setJobOffers] = React.useState([
-    {
-      id: 1,
-      name: "Le Gourmet Parisien",
-      icon: "🍽️",
-      location: "Paris 8ème, France",
-      position: "Serveuse",
-      salary: "28,000 DA/mois",
-      hours: "18:00 - 23:00",
-      description: "Restaurant gastronomique cherche serveuse expérimentée pour service du soir.",
-      benefits: ["Repas inclus", "Pourboires", "Formation continue"]
-    },
-    {
-      id: 2,
-      name: "Café de la Paix",
-      icon: "🍸",
-      location: "Lyon Centre, France",
-      position: "Barmaid",
-      salary: "25,000 DA/mois",
-      hours: "15:00 - 22:00",
-      description: "Café branché cherche barmaid créative pour cocktails et service bar.",
-      benefits: ["Prime", "Équipe jeune", "Pourboires"]
-    },
-    {
-      id: 3,
-      name: "Sushi Master",
-      icon: "🍣",
-      location: "Marseille, France",
-      position: "Serveuse polyvalente",
-      salary: "26,000 DA/mois",
-      hours: "11:30 - 14:30 / 19:00 - 22:30",
-      description: "Restaurant japonais cherche serveuse dynamique.",
-      benefits: ["Repas offerts", "CDI possible", "Parking"]
-    }
-  ]);
+  const [jobOffers, setJobOffers] = React.useState([]);
+  const [isLoadingJobOffers, setIsLoadingJobOffers] = React.useState(false);
 
   // ==================== Images depuis l'appareil avec sauvegarde ====================
   const [tempProfile, setTempProfile] = React.useState({
@@ -117,6 +84,71 @@ export default function AuthNavbar(props) {
     }
   }, []);
 
+  // ==================== Chargement des données utilisateur depuis le backend ====================
+  React.useEffect(() => {
+    const loadUserData = async () => {
+      const userId = localStorage.getItem('userId');
+      if (!userId) return;
+
+      try {
+        const userData = await apiUser.getProfileInfo(userId);
+        setTempProfile(prev => ({
+          ...prev,
+          name: userData.firstName || prev.name,
+          lastName: userData.lastName || prev.lastName,
+          location: userData.location || prev.location,
+          phone: userData.phone || prev.phone,
+          bio: userData.bio || prev.bio,
+          email: userData.email || prev.email,
+          coverImage: userData.coverImage || prev.coverImage,
+          profileImage: userData.avatar || prev.profileImage
+        }));
+      } catch (error) {
+        console.warn('Erreur chargement profil:', error);
+      }
+
+      try {
+        const links = await apiUser.getSocialLinks(userId);
+        setSocialLinks({
+          facebook: links.facebook || "",
+          instagram: links.instagram || "",
+          twitter: links.twitter || "",
+          linkedin: links.linkedin || "",
+          tiktok: links.tiktok || ""
+        });
+      } catch (error) {
+        console.warn('Erreur chargement liens sociaux:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  React.useEffect(() => {
+    const fetchWorkerOffers = async () => {
+      if (localStorage.getItem("userRole") !== "WORKER") return;
+      const userId = localStorage.getItem("userId");
+      if (!userId) return;
+
+      setIsLoadingJobOffers(true);
+      try {
+        const workerResponse = await jobOfferService.getWorkerByUser(userId);
+        const workerId = workerResponse?.worker?._id || workerResponse?._id;
+        if (!workerId) return;
+
+        const offersResponse = await jobOfferService.getMyJobOffers(workerId);
+        const backendOffers = offersResponse?.jobOffers || offersResponse?.offers || offersResponse || [];
+        setJobOffers(Array.isArray(backendOffers) ? backendOffers : []);
+      } catch (error) {
+        console.error("Erreur de chargement des offres d'emploi:", error);
+      } finally {
+        setIsLoadingJobOffers(false);
+      }
+    };
+
+    fetchWorkerOffers();
+  }, []);
+
   const [socialLinks, setSocialLinks] = React.useState({
     facebook: "",
     instagram: "",
@@ -127,21 +159,54 @@ export default function AuthNavbar(props) {
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
-    alert("👋 Vous êtes déconnecté");
+    localStorage.clear();
+    window.location.href = "/auth/login";
   };
 
-  const saveProfileSettings = () => {
-    alert("✅ Profil mis à jour avec succès!");
-    setSidebarOpen(false);
+  const saveProfileSettings = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      alert("❌ Utilisateur non connecté");
+      return;
+    }
+
+    try {
+      await apiUser.updateProfileInfo(userId, {
+        firstName: tempProfile.name,
+        lastName: tempProfile.lastName,
+        phone: tempProfile.phone,
+        location: tempProfile.location,
+        bio: tempProfile.bio,
+        avatar: tempProfile.profileImage,
+        coverImage: tempProfile.coverImage
+      });
+      alert("✅ Profil mis à jour avec succès!");
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error('❌ Erreur mise à jour profil:', error);
+      alert(`❌ Échec de la mise à jour: ${error?.message || JSON.stringify(error)}`);
+    }
   };
 
   const updateSocialLink = (platform, url) => {
     setSocialLinks({ ...socialLinks, [platform]: url });
   };
 
-  const saveSocialLinks = () => {
-    alert("✅ Liens sociaux mis à jour!");
-    setSidebarOpen(false);
+  const saveSocialLinks = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      alert("❌ Utilisateur non connecté");
+      return;
+    }
+
+    try {
+      await apiUser.saveSocialLinks(userId, socialLinks);
+      alert("✅ Liens sociaux mis à jour!");
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error('❌ Erreur mise à jour liens sociaux:', error);
+      alert(`❌ Échec de la mise à jour: ${error?.message || JSON.stringify(error)}`);
+    }
   };
 
   const showNotificationMessage = (message) => {
@@ -151,17 +216,27 @@ export default function AuthNavbar(props) {
   };
 
   // ==================== useCallback pour optimiser les performances ====================
-  const handleAcceptOffer = React.useCallback((offerId) => {
-    const acceptedOffer = jobOffers.find(offer => offer.id === offerId);
-    setJobOffers(prev => prev.filter(offer => offer.id !== offerId));
-    showNotificationMessage(`✅ Félicitations ! Vous avez accepté l'offre chez ${acceptedOffer?.name}`);
+  const handleAcceptOffer = React.useCallback(async (offerId) => {
+    const acceptedOffer = jobOffers.find(offer => (offer._id || offer.id) === offerId);
+    try {
+      await jobOfferService.acceptJobOffer(offerId);
+    } catch (error) {
+      console.error("Erreur d'acceptation de l'offre:", error);
+    }
+    setJobOffers(prev => prev.filter(offer => (offer._id || offer.id) !== offerId));
+    showNotificationMessage(`✅ Félicitations ! Vous avez accepté l'offre chez ${acceptedOffer?.name || acceptedOffer?.restaurant?.name || 'ce restaurant'}`);
     setShowJobOffers(false);
   }, [jobOffers]);
 
-  const handleRejectOffer = React.useCallback((offerId) => {
-    const rejectedOffer = jobOffers.find(offer => offer.id === offerId);
-    setJobOffers(prev => prev.filter(offer => offer.id !== offerId));
-    showNotificationMessage(`❌ Vous avez refusé l'offre chez ${rejectedOffer?.name}`);
+  const handleRejectOffer = React.useCallback(async (offerId) => {
+    const rejectedOffer = jobOffers.find(offer => (offer._id || offer.id) === offerId);
+    try {
+      await jobOfferService.rejectJobOffer(offerId);
+    } catch (error) {
+      console.error("Erreur de rejet de l'offre:", error);
+    }
+    setJobOffers(prev => prev.filter(offer => (offer._id || offer.id) !== offerId));
+    showNotificationMessage(`❌ Vous avez refusé l'offre chez ${rejectedOffer?.name || rejectedOffer?.restaurant?.name || 'ce restaurant'}`);
   }, [jobOffers]);
 
   const pendingOffersCount = jobOffers.length;
@@ -753,25 +828,43 @@ export default function AuthNavbar(props) {
             <h3 className="offers-title">📢 Offres d'emploi disponibles</h3>
             
             <div className="offers-list">
-              {jobOffers.length === 0 ? (
+              {isLoadingJobOffers ? (
+                <div className="no-offers-message">
+                  <div style={{ fontSize: '3rem', marginBottom: '10px' }}>⏳</div>
+                  <p>Chargement de vos offres...</p>
+                </div>
+              ) : jobOffers.length === 0 ? (
                 <div className="no-offers-message">
                   <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🎉</div>
                   <p>Aucune offre d'emploi disponible</p>
                 </div>
               ) : (
-                jobOffers.map((offer) => (
-                  <div key={offer.id} className="offer-item-wrapper">
-                    <RestaurantCard restaurant={offer} />
-                    <div className="offer-buttons">
-                      <button className="accept-offer-btn" onClick={() => handleAcceptOffer(offer.id)}>
-                        ✅ Accepter l'offre
-                      </button>
-                      <button className="reject-offer-btn" onClick={() => handleRejectOffer(offer.id)}>
-                        ❌ Refuser l'offre
-                      </button>
+                jobOffers.map((offer) => {
+                  const restaurantData = offer.restaurant || {};
+                  const displayItem = {
+                    ...restaurantData,
+                    name: restaurantData.name || offer.manager?.user?.name || "Offre d'emploi",
+                    location: restaurantData.location || offer.restaurant?.address || "",
+                    description: restaurantData.description || restaurantData.bio || "Nouvelle offre de travail disponible.",
+                    image: restaurantData.image || restaurantData.coverImage || "https://images.unsplash.com/photo-1528605248644-14dd04022da1",
+                    logo: restaurantData.logo || restaurantData.image || "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe"
+                  };
+                  const offerId = offer._id || offer.id;
+
+                  return (
+                    <div key={offerId} className="offer-item-wrapper">
+                      <RestaurantCard restaurant={displayItem} />
+                      <div className="offer-buttons">
+                        <button className="accept-offer-btn" onClick={() => handleAcceptOffer(offerId)}>
+                          ✅ Accepter l'offre
+                        </button>
+                        <button className="reject-offer-btn" onClick={() => handleRejectOffer(offerId)}>
+                          ❌ Refuser l'offre
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

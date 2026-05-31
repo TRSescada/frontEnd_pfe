@@ -1,6 +1,7 @@
 /*eslint-disable*/
 import React from "react";
 import { Link } from "react-router-dom";
+import apiUser from "services/apiUser";
 
 export default function AuthNavbar(props) {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
@@ -9,17 +10,17 @@ export default function AuthNavbar(props) {
 
   // ==================== Paramètres du profil ====================
   const [tempProfile, setTempProfile] = React.useState({
-    name: "Ahmed Benali",
-    lastName: "Benali",
-    location: "Alger, Algérie",
-    phone: "+213 5 55 55 55 55",
-    workTime: "Lundi - Vendredi: 09:00 - 18:00",
-    bio: "Directeur de restaurant passionné avec plus de 10 ans d'expérience dans la gestion d'établissements gastronomiques.",
+    name: "",
+    lastName: "",
+    location: "",
+    phone: "",
+    workTime: "",
+    bio: "",
     coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
     profileImage: "https://randomuser.me/api/portraits/men/32.jpg"
   });
 
-  // ==================== Liens sociaux (5 icônes) ====================
+  // ==================== Liens sociaux ====================
   const [socialLinks, setSocialLinks] = React.useState({
     facebook: "",
     instagram: "",
@@ -28,24 +29,96 @@ export default function AuthNavbar(props) {
     whatsapp: ""
   });
 
+  // ==================== Chargement des données utilisateur ====================
+  React.useEffect(() => {
+    const loadUserData = async () => {
+      const userId = localStorage.getItem('userId');
+      if (!userId) return;
+
+      try {
+        const userData = await apiUser.getProfileInfo(userId);
+        setTempProfile({
+          name: userData.firstName || "",
+          lastName: userData.lastName || "",
+          location: userData.location || "",
+          phone: userData.phone || "",
+          workTime: userData.workTime || "",
+          bio: userData.bio || "",
+          coverImage: userData.coverImage || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+          profileImage: userData.avatar || "https://randomuser.me/api/portraits/men/32.jpg"
+        });
+      } catch (error) {
+        console.warn('Erreur chargement profil:', error);
+      }
+
+      try {
+        const links = await apiUser.getSocialLinks(userId);
+        setSocialLinks({
+          facebook: links.facebook || "",
+          instagram: links.instagram || "",
+          snapchat: links.snapchat || "",
+          tiktok: links.tiktok || "",
+          whatsapp: links.whatsapp || ""
+        });
+      } catch (error) {
+        console.warn('Erreur chargement liens sociaux:', error);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
   // ==================== Fonctions ====================
   const handleLogout = () => {
     setShowLogoutConfirm(false);
-    alert("👋 Vous êtes déconnecté");
+    localStorage.clear();
+    window.location.href = "/auth/login";
   };
 
-  const saveProfileSettings = () => {
-    alert("✅ Profil mis à jour avec succès!");
-    setSidebarOpen(false);
+  const saveProfileSettings = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      alert("❌ Utilisateur non connecté");
+      return;
+    }
+
+    try {
+      await apiUser.updateProfileInfo(userId, {
+        firstName: tempProfile.name,
+        lastName: tempProfile.lastName,
+        phone: tempProfile.phone,
+        location: tempProfile.location,
+        bio: tempProfile.bio,
+        avatar: tempProfile.profileImage,
+        coverImage: tempProfile.coverImage
+      });
+      alert("✅ Profil mis à jour avec succès!");
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error('❌ Erreur mise à jour profil:', error);
+      alert(`❌ Échec de la mise à jour: ${error?.message || JSON.stringify(error)}`);
+    }
   };
 
   const updateSocialLink = (platform, url) => {
     setSocialLinks({ ...socialLinks, [platform]: url });
   };
 
-  const saveSocialLinks = () => {
-    alert("✅ Liens sociaux mis à jour!");
-    setSidebarOpen(false);
+  const saveSocialLinks = async () => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      alert("❌ Utilisateur non connecté");
+      return;
+    }
+
+    try {
+      await apiUser.saveSocialLinks(userId, socialLinks);
+      alert("✅ Liens sociaux mis à jour!");
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error('❌ Erreur mise à jour liens sociaux:', error);
+      alert(`❌ Échec de la mise à jour: ${error?.message || JSON.stringify(error)}`);
+    }
   };
 
   const SocialIcons = () => (
@@ -331,7 +404,7 @@ export default function AuthNavbar(props) {
 
               <li className="flex items-center">
                 <Link
-                  to="/profilemanger"
+                  to="/profilemanager"
                   className="nav-link text-white px-3 py-4 lg:py-2 flex items-center text-xs uppercase font-bold transition-all duration-300"
                 >
                   <span className="inline-block ml-2">👤 Profile</span>

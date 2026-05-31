@@ -1,76 +1,49 @@
 // src/views/liste.profile.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FooterRecharche from "../components/Footers/footer.recharche";
 import Navbar from "../components/Navbars/IndexNavbar";
 import EmployeeCard from "../components/Common/employecard";
 import { useHistory } from "react-router-dom";
+import jobOfferService from "../services/jobOfferService";
 
 export default function ListeProfile() {
   const history = useHistory();
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      name: "Jenna Stones",
-      role: "Serveuse / Barmaid",
-      location: "Paris, France",
-      bio: "Serveuse professionnelle avec 5 ans d'expérience dans la restauration.",
-      image: "https://randomuser.me/api/portraits/women/68.jpg",
-      email: "jenna.stones@example.com",
-      phone: "+33 6 12 34 56 78",
-      experience: "5 ans",
-      rating: 4.8
-    },
-    {
-      id: 2,
-      name: "Youssef",
-      role: "Serveur",
-      location: "Alger, Algérie",
-      bio: "Serveur professionnel avec 3 ans d'expérience, dynamique et souriant.",
-      image: "https://randomuser.me/api/portraits/men/1.jpg",
-      email: "youssef@example.com",
-      phone: "+213 5 55 55 55 55",
-      experience: "3 ans",
-      rating: 4.5
-    },
-    {
-      id: 3,
-      name: "Mohamed",
-      role: "Chef Cuisinier",
-      location: "Alger, Algérie",
-      bio: "Chef cuisinier passionné avec 8 ans d'expérience dans la cuisine internationale.",
-      image: "https://randomuser.me/api/portraits/men/2.jpg",
-      email: "mohamed@example.com",
-      phone: "+213 5 55 55 55 56",
-      experience: "8 ans",
-      rating: 4.9
-    },
-    {
-      id: 4,
-      name: "Sophie",
-      role: "Serveuse",
-      location: "Paris, France",
-      bio: "Serveuse expérimentée, parle couramment anglais et espagnol.",
-      image: "https://randomuser.me/api/portraits/women/1.jpg",
-      email: "sophie@example.com",
-      phone: "+33 6 12 34 56 79",
-      experience: "4 ans",
-      rating: 4.6
-    },
-    {
-      id: 5,
-      name: "Karim",
-      role: "Barman",
-      location: "Alger, Algérie",
-      bio: "Barman créatif, spécialisé dans les cocktails originaux.",
-      image: "https://randomuser.me/api/portraits/men/3.jpg",
-      email: "karim@example.com",
-      phone: "+213 5 55 55 55 57",
-      experience: "2 ans",
-      rating: 4.4
-    }
-  ]);
+  const [employees, setEmployees] = useState([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setIsLoadingEmployees(true);
+        const response = await jobOfferService.getAllWorkers();
+        const workers = response.workers || response || [];
+        const mappedEmployees = workers.map(worker => {
+          const user = worker.user || {};
+          const fullName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim();
+          return {
+            id: worker._id || worker.id,
+            name: fullName || 'Employé',
+            role: worker.role || user.role || 'Employé',
+            location: user.location || worker.location || 'Non défini',
+            bio: worker.bio || user.bio || 'Aucune description disponible.',
+            image: worker.avatar || user.avatar || user.profileImage || worker.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'Employé')}&background=22c55e&color=ffffff`,
+            email: user.email || worker.email || '',
+            phone: user.phone || worker.phone || '',
+            experience: worker.experience || user.experience || '',
+            rating: worker.rating || 4.5
+          };
+        });
+        setEmployees(mappedEmployees);
+      } catch (error) {
+        console.error('Erreur while loading employees:', error);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -88,8 +61,22 @@ export default function ListeProfile() {
 
   const goToEmployeeProfile = () => {
     if (selectedEmployee) {
+      const workerInfo = {
+        id: selectedEmployee.id,
+        name: selectedEmployee.name,
+        role: selectedEmployee.role,
+        experience: selectedEmployee.experience || selectedEmployee.role || "",
+        skills: selectedEmployee.skills || [],
+        bio: selectedEmployee.bio || "",
+        email: selectedEmployee.email || "",
+        phone: selectedEmployee.phone || "",
+        location: selectedEmployee.location || "",
+        coverImage: selectedEmployee.coverImage || selectedEmployee.image || "",
+        profileImage: selectedEmployee.image || ""
+      };
+      localStorage.setItem('workerInfo', JSON.stringify(workerInfo));
       setShowModal(false);
-      history.push(`/employee/${selectedEmployee.id}`);
+      history.push('/profile', { employee: workerInfo });
     }
   };
 
@@ -244,7 +231,12 @@ export default function ListeProfile() {
       
       <div className="employees-container">
         <div className="employees-grid">
-          {filteredEmployees.length === 0 ? (
+          {isLoadingEmployees ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">⏳</div>
+              <p>Chargement des employés...</p>
+            </div>
+          ) : filteredEmployees.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon">👥</div>
               <p>Aucun employé trouvé</p>

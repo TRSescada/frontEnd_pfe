@@ -17,4 +17,21 @@ axiosInstance.interceptors.response.use(
     }
 );
 
+// Add auth token to requests when available
+axiosInstance.interceptors.request.use(
+    (config) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (token) {
+                config.headers = config.headers || {};
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
 export default axiosInstance;

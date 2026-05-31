@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useHistory } from "react-router-dom";
+import axiosInstance from "../../services/axiosConfig";
 
 export default function LoginPage() {
   const history = useHistory();
@@ -33,13 +34,39 @@ export default function LoginPage() {
     setRotateY(0);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      alert("⚠️ Veuillez remplir tous les champs");
+      return;
+    }
+    
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const response = await axiosInstance.post("../auth/login", { email, password });
+      const { token, user } = response.data;
+      
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userId", user._id);
+      localStorage.setItem("userRole", user.role);
+      
+      // Redirect based on the user's role
+      if (user.role === "OWNER") {
+        history.push("/profileowner");
+      } else if (user.role === "MANAGER") {
+        history.push("/profilemanager");
+      } else if (user.role === "WORKER") {
+        history.push("/profileemploye");
+      } else {
+        history.push("/");
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || "Une erreur est survenue lors de la connexion";
+      alert(`❌ ${message}`);
+    } finally {
       setIsLoading(false);
-      history.push("/");
-    }, 2000);
+    }
   };
 
   const handleForgotPassword = () => {

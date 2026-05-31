@@ -1,78 +1,124 @@
 // src/views/VisitorProfile.js
-import React, { useState } from "react";
-import { useHistory } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useHistory, useLocation } from "react-router-dom";
 import Footer from "components/Footers/Footer.js";
 import RestaurantCard from "components/Common/restaurantCard";
 import EmployeeCard from "components/Common/employecard";
 import ProductCard from "components/Common/productCard";
+import apiGestionX from "services/apiGestionX";
 
 export default function VisitorProfile() {
   const history = useHistory();
-  
-  // ==================== بيانات البروفيل ====================
-  const [visitorInfo, setVisitorInfo] = useState({
-    name: "Restaurant Andalous",
-    role: "Restaurant Gastronomique",
-    experience: "Ouvert depuis 2010",
-    skills: ["Cuisine Algérienne", "Plats Internationaux", "Pâtisserie Orientale", "Service de Qualité"],
-    bio: "Bienvenue dans notre établissement! Nous sommes fiers de vous offrir une expérience culinaire unique dans une ambiance chaleureuse et familiale.",
-    email: "contact@andalus-restaurant.dz",
-    phone: "+213 5 55 55 55 55",
-    location: "Alger, Algérie",
-    languages: ["Français", "Arabe", "Anglais"]
-  });
-  
-  // ==================== بيانات المطعم (كرت المطعم) ====================
-  const [restaurantCardData, setRestaurantCardData] = useState({
-    id: 1,
-    name: "Restaurant Andalous",
-    location: "Alger, Algérie",
-    description: "Les meilleurs plats arabes et internationaux dans une ambiance familiale",
-    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-    logo: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
-    phone: "+213 5 55 55 55 55",
-    email: "info@andalus-restaurant.dz",
-    rating: 4.8,
-    employees: 12,
+  const location = useLocation();
+  const restaurantFromList = location.state?.restaurant || null;
+
+  // ==================== DONNÉES DU RESTAURANT ====================
+  const [restaurantData, setRestaurantData] = useState({
+    id: restaurantFromList?.id || null,
+    name: restaurantFromList?.name || "Restaurant",
+    location: restaurantFromList?.location || "",
+    description: restaurantFromList?.description || "",
+    image: restaurantFromList?.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+    logo: restaurantFromList?.logo || "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
+    phone: restaurantFromList?.phone || "",
+    email: restaurantFromList?.email || "",
+    rating: restaurantFromList?.rating || 0,
+    employees: restaurantFromList?.employees || 0,
     horaires: ""
   });
-  
-  // ==================== بيانات المنيو ====================
-  const [menuCategories, setMenuCategories] = useState([
-    { id: 1, name: "Chicha", icon: "💨", color: "#ff6b6b", products: [
-      { id: 101, name: "Chicha Pomme", price: 15, image: "https://cdn-icons-png.flaticon.com/512/1998/1998626.png", description: "Chicha à la pomme rafraîchissante" },
-      { id: 102, name: "Chicha Raisin", price: 15, image: "https://cdn-icons-png.flaticon.com/512/1998/1998626.png", description: "Chicha au raisin sucrée" },
-      { id: 103, name: "Chicha Menthe", price: 15, image: "https://cdn-icons-png.flaticon.com/512/1998/1998626.png", description: "Chicha à la menthe classique" }
-    ] },
-    { id: 2, name: "Plats", icon: "🍔", color: "#4ecdc4", products: [
-      { id: 201, name: "Burger", price: 12, image: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png", description: "Burger avec frites maison" },
-      { id: 202, name: "Pizza", price: 18, image: "https://cdn-icons-png.flaticon.com/512/1046/1046796.png", description: "Pizza italienne authentique" }
-    ] },
-    { id: 3, name: "Boissons", icon: "🥤", color: "#45b7d1", products: [
-      { id: 301, name: "Coca Cola", price: 3, image: "https://cdn-icons-png.flaticon.com/512/1046/1046855.png", description: "Boisson gazeuse" },
-      { id: 302, name: "Jus d'Orange", price: 5, image: "https://cdn-icons-png.flaticon.com/512/1046/1046874.png", description: "Jus frais pressé" }
-    ] },
-    { id: 4, name: "Desserts", icon: "🍰", color: "#f9ca24", products: [
-      { id: 401, name: "Gâteau", price: 7, image: "https://cdn-icons-png.flaticon.com/512/1046/1046790.png", description: "Gâteau maison" },
-      { id: 402, name: "Glace", price: 5, image: "https://cdn-icons-png.flaticon.com/512/1046/1046800.png", description: "Glace artisanale" }
-    ] }
-  ]);
-  
-  // ==================== بيانات العمال ====================
-  const [employees, setEmployees] = useState([
-    { id: 1, name: "Youssef", role: "Serveur", location: "Alger, Algérie", bio: "Serveur professionnel avec 3 ans d'expérience", image: "https://randomuser.me/api/portraits/men/1.jpg", experience: "3 ans", rating: 4.5, restaurant: "Restaurant Andalous" },
-    { id: 2, name: "Mohamed", role: "Chef Cuisinier", location: "Alger, Algérie", bio: "Chef cuisinier passionné avec 8 ans d'expérience", image: "https://randomuser.me/api/portraits/men/2.jpg", experience: "8 ans", rating: 4.9, restaurant: "Restaurant Andalous" },
-    { id: 3, name: "Karim", role: "Barman", location: "Alger, Algérie", bio: "Barman créatif, spécialisé dans les cocktails", image: "https://randomuser.me/api/portraits/men/3.jpg", experience: "4 ans", rating: 4.4, restaurant: "Restaurant Andalous" },
-    { id: 4, name: "Sophie", role: "Serveuse", location: "Paris, France", bio: "Serveuse expérimentée", image: "https://randomuser.me/api/portraits/women/1.jpg", experience: "2 ans", rating: 4.6, restaurant: "Café Parisien" },
-    { id: 5, name: "Amine", role: "Pâtissier", location: "Alger, Algérie", bio: "Pâtissier expert", image: "https://randomuser.me/api/portraits/men/4.jpg", experience: "6 ans", rating: 4.7, restaurant: "Restaurant Andalous" }
-  ]);
+
+  // ==================== VISITOR INFO ====================
+  const [visitorInfo, setVisitorInfo] = useState({
+    name: restaurantFromList?.name || "Restaurant",
+    role: "Restaurant Gastronomique",
+    experience: "",
+    skills: [],
+    bio: restaurantFromList?.description || "",
+    email: restaurantFromList?.email || "",
+    phone: restaurantFromList?.phone || "",
+    location: restaurantFromList?.location || "",
+    languages: []
+  });
+
+  // ==================== MENU ====================
+  const [menuCategories, setMenuCategories] = useState([]);
+
+  // ==================== EMPLOYEES ====================
+  const [employees, setEmployees] = useState([]);
   
   // ==================== STATES للمودالات ====================
   const [showRestaurantModal, setShowRestaurantModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [showWorkersModal, setShowWorkersModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  
+
+  // ==================== CHARGEMENT DES DONNÉES DEPUIS LE BACKEND ====================
+  useEffect(() => {
+    const restaurantId = restaurantFromList?.id;
+    if (!restaurantId) return;
+
+    const loadData = async () => {
+      try {
+        const categoriesResp = await apiGestionX.getRestaurantCategories(restaurantId);
+        const cats = Array.isArray(categoriesResp) ? categoriesResp : categoriesResp?.categories || [];
+        const normalizeCategory = (name) => {
+          if (!name) return 'plat';
+          const key = name.trim().toLowerCase();
+          const map = { plats: 'plat', plat: 'plat', boissons: 'boisson', boisson: 'boisson', chicha: 'chicha', desserts: 'dessert', dessert: 'dessert' };
+          return map[key] || 'plat';
+        };
+        const categoriesWithProducts = await Promise.all(cats.map(async (cat) => {
+          try {
+            const categorieKey = normalizeCategory(cat.name || cat.nom);
+            const productsResp = await apiGestionX.getProductsByCategory(restaurantId, categorieKey);
+            const products = Array.isArray(productsResp) ? productsResp : productsResp?.products || [];
+            return {
+              id: cat._id,
+              name: cat.name || cat.nom || "Catégorie",
+              icon: cat.icon || "🍔",
+              color: cat.color || "#4ecdc4",
+              products: products.map(p => ({
+                id: p._id,
+                name: p.name || "Produit",
+                price: p.price || 0,
+                image: p.image || "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
+                description: p.description || ""
+              }))
+            };
+          } catch { return null; }
+        }));
+        const validCategories = categoriesWithProducts.filter(Boolean);
+        if (validCategories.length > 0) setMenuCategories(validCategories);
+      } catch (err) {
+        console.warn('Erreur chargement menu:', err);
+      }
+
+      try {
+        const workersResp = await apiGestionX.getWorkersByRestaurant(restaurantId);
+        const workersList = Array.isArray(workersResp) ? workersResp : workersResp?.workers || [];
+        const mappedEmployees = workersList.map(w => {
+          const user = w.user || {};
+          return {
+            id: w._id,
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || "Employé",
+            role: w.role || "Employé",
+            location: user.location || "",
+            bio: w.bio || user.bio || "",
+            image: user.avatar || w.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName || 'E')}&background=22c55e&color=ffffff`,
+            experience: w.experience || "",
+            rating: w.rating || 0,
+            restaurant: restaurantFromList?.name || ""
+          };
+        });
+        setEmployees(mappedEmployees);
+      } catch (err) {
+        console.warn('Erreur chargement employés:', err);
+      }
+    };
+
+    loadData();
+  }, [restaurantFromList?.id]);
+
   const goBack = () => {
     history.goBack();
   };
@@ -690,7 +736,7 @@ export default function VisitorProfile() {
                       <div className="profile-image-wrapper" style={{ position: 'relative' }}>
                         <div className="profile-glow"></div>
                         <div className="gradient-border-box">
-                          <img alt="Restaurant Logo" src={restaurantCardData.logo} className="content" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                          <img alt="Restaurant Logo" src={restaurantData.logo} className="content" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                         </div>
                       </div>
                     </div>
@@ -698,11 +744,11 @@ export default function VisitorProfile() {
                   
                   <div className="text-center mt-12">
                     <h3 className="text-4xl font-semibold leading-normal mb-2 text-white">
-                      {restaurantCardData.name}
+                      {restaurantData.name}
                       <span className="status-badge">⭐ Restaurant</span>
                     </h3>
                     <div className="text-sm leading-normal mt-2 mb-2 text-white font-bold uppercase">
-                      <i className="fas fa-map-marker-alt mr-2"></i> {restaurantCardData.location}
+                      <i className="fas fa-map-marker-alt mr-2"></i> {restaurantData.location}
                     </div>
                     <div className="mb-2 text-white mt-10">
                       <i className="fas fa-star mr-2 text-green-400"></i> {visitorInfo.role}
@@ -710,7 +756,7 @@ export default function VisitorProfile() {
                   </div>
                   
                   <div className="action-buttons">
-                    <button className="btn-contact" onClick={() => alert(`📧 Email: ${restaurantCardData.email}\n📱 Téléphone: ${restaurantCardData.phone}`)}>
+                    <button className="btn-contact" onClick={() => alert(`📧 Email: ${restaurantData.email}\n📱 Téléphone: ${restaurantData.phone}`)}>
                       📧 Contacter
                     </button>
                     <button className="btn-comment" onClick={() => setShowRestaurantModal(true)}>
@@ -723,7 +769,7 @@ export default function VisitorProfile() {
                     
                     <div className="visitor-card" onClick={() => setShowRestaurantModal(true)}>
                       <RestaurantCard 
-                        restaurant={restaurantCardData}
+                        restaurant={restaurantData}
                         showActions={false}
                       />
                     </div>
@@ -772,15 +818,15 @@ export default function VisitorProfile() {
             <button className="close-btn" onClick={() => setShowRestaurantModal(false)}>✕</button>
             <div className="restaurant-info">
               <div className="text-6xl mb-4">🏪</div>
-              <h2 className="text-2xl font-bold text-white mb-2">{restaurantCardData.name}</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">{restaurantData.name}</h2>
               <div className="w-16 h-0.5 bg-green-500 mx-auto mb-6"></div>
-              <p className="text-white mb-2 font-bold">{restaurantCardData.location}</p>
+              <p className="text-white mb-2 font-bold">{restaurantData.location}</p>
               <p className="text-white mb-2">{visitorInfo.role}</p>
-              <img src={restaurantCardData.image} alt="restaurant" className="restaurant-image" />
+              <img src={restaurantData.image} alt="restaurant" className="restaurant-image" />
               <p className="text-white mb-4 italic">"{visitorInfo.bio}"</p>
-              <p className="text-white/90 text-sm mb-2">📍 {restaurantCardData.location}</p>
-              <p className="text-white/90 text-sm mb-2">📞 {restaurantCardData.phone}</p>
-              <p className="text-white/90 text-sm mb-2">✉️ {restaurantCardData.email}</p>
+              <p className="text-white/90 text-sm mb-2">📍 {restaurantData.location}</p>
+              <p className="text-white/90 text-sm mb-2">📞 {restaurantData.phone}</p>
+              <p className="text-white/90 text-sm mb-2">✉️ {restaurantData.email}</p>
               <div className="mt-4">
                 <h4 className="text-white font-bold mb-2">Nos spécialités</h4>
                 <div className="flex flex-wrap gap-2 justify-center">

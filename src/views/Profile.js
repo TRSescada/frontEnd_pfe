@@ -1,5 +1,7 @@
 // src/views/Profile.js - صفحة الزائر لحساب العامل (قراءة فقط)
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import jobOfferService from "services/jobOfferService";
 import Footer from "components/Footers/Footer.js";
 import Navbar from "components/Navbars/AuthNavbar.js";
 import CommentSection from "components/Common/commentSection.js";
@@ -42,14 +44,34 @@ export default function Profile() {
   const [showWorkerCV, setShowWorkerCV] = useState(false);
   const [showManagerCV, setShowManagerCV] = useState(false);
   const [showCommentsList, setShowCommentsList] = useState(false);
+  const [offerStatus, setOfferStatus] = useState(null);
   const [workerStatus, setWorkerStatus] = useState("working");
   const [currentWorkPlace, setCurrentWorkPlace] = useState("Le Café Paris");
+  const location = useLocation();
   
-  // ==================== CHARGEMENT DES DONNÉES DEPUIS localStorage ====================
+  // ==================== CHARGEMENT DES DONNÉES DEPUIS localStorage OU STATE ====================
   useEffect(() => {
-    // تحميل بيانات الموظف
-    const savedWorkerInfo = localStorage.getItem("workerInfo");
-    if (savedWorkerInfo) setWorkerInfo(JSON.parse(savedWorkerInfo));
+    const stateEmployee = location.state?.employee;
+    if (stateEmployee) {
+      const workerData = {
+        id: stateEmployee.id || stateEmployee._id || "",
+        name: stateEmployee.name || "",
+        role: stateEmployee.role || "",
+        experience: stateEmployee.experience || stateEmployee.role || "",
+        skills: stateEmployee.skills || [],
+        bio: stateEmployee.bio || "",
+        email: stateEmployee.email || "",
+        phone: stateEmployee.phone || "",
+        location: stateEmployee.location || "",
+        coverImage: stateEmployee.coverImage || stateEmployee.image || "",
+        profileImage: stateEmployee.profileImage || stateEmployee.image || ""
+      };
+      setWorkerInfo(workerData);
+      localStorage.setItem("workerInfo", JSON.stringify(workerData));
+    } else {
+      const savedWorkerInfo = localStorage.getItem("workerInfo");
+      if (savedWorkerInfo) setWorkerInfo(JSON.parse(savedWorkerInfo));
+    }
     
     // تحميل التعليقات المحفوظة
     const savedComments = localStorage.getItem("comments");
@@ -90,6 +112,30 @@ export default function Profile() {
     const savedStatus = localStorage.getItem("workerStatus");
     if (savedStatus) setWorkerStatus(savedStatus);
   }, []);
+  
+  const handleMakeOffer = async () => {
+    const managerId = localStorage.getItem('userId');
+    if (!managerId) {
+      alert('⚠️ Vous devez être connecté en tant que manager pour faire une offre.');
+      return;
+    }
+
+    if (!workerInfo.id) {
+      alert("⚠️ Impossible de cibler le bon employé pour l'offre.");
+      return;
+    }
+
+    try {
+      setOfferStatus('sending');
+      await jobOfferService.createJobOffer(managerId, workerInfo.id);
+      setOfferStatus('sent');
+      alert('✅ Offre envoyée au travailleur !');
+    } catch (error) {
+      console.error('Erreur création offre:', error);
+      setOfferStatus('error');
+      alert(`❌ Échec de l'offre : ${error?.message || error}`);
+    }
+  };
   
   // دوال فارغة لأن الصفحة للقراءة فقط
   const emptyFunction = () => {};
@@ -665,11 +711,11 @@ export default function Profile() {
                       <div className="mt-4 text-white/80 font-semibold">Cliquez pour voir →</div>
                     </div>
                     
-                    <div className="visitor-card" onClick={() => alert("🌟 Projets à venir !")}>
+                    <div className="visitor-card" onClick={handleMakeOffer}>
                       <div className="text-6xl mb-4">🚀</div>
                       <h3 className="text-xl font-bold text-white mb-2">Projets</h3>
-                      <p className="text-white/90 text-sm">Mes réalisations récentes</p>
-                      <div className="mt-4 text-white/80 font-semibold">Cliquez pour voir →</div>
+                      <p className="text-white/90 text-sm">Faire une offre au travailleur</p>
+                      <div className="mt-4 text-white/80 font-semibold">Cliquez pour envoyer l'offre →</div>
                     </div>
                     
                   </div>

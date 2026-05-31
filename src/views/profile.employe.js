@@ -1,5 +1,9 @@
 // src/views/Profileemploye.js
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useLocation } from "react-router-dom";
+import apiUser from "services/apiUser";
+import apiGestionX from "services/apiGestionX";
+import jobOfferService from "services/jobOfferService";
 import Footer from "components/Footers/Footer.js";
 import AdminNavbar from "components/Navbars/AdminNavbar.js";
 import CommentSection from "components/Common/commentSection.js";
@@ -483,6 +487,7 @@ export default function Profileemploye() {
   const [currentWorkPlace, setCurrentWorkPlace] = useState("Le Café Paris");
   const [isAnyModalOpen, setIsAnyModalOpen] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState(null);
+  const location = useLocation();
   const [cvKey, setCvKey] = useState(0); // ✅ مفتاح لإعادة تحميل CVSection فقط عند الحاجة
   const [socialLinks, setSocialLinks] = useState({
     facebook: "",
@@ -506,6 +511,110 @@ export default function Profileemploye() {
     coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
     profileImage: "https://randomuser.me/api/portraits/women/68.jpg"
   });
+
+  useEffect(() => {
+    const employee = location.state?.employee;
+    if (employee) {
+      setWorkerInfo(prev => ({
+        ...prev,
+        name: employee.name || prev.name,
+        role: employee.role || prev.role,
+        experience: employee.experience || prev.experience,
+        skills: employee.skills || prev.skills,
+        bio: employee.bio || prev.bio,
+        email: employee.email || prev.email,
+        phone: employee.phone || prev.phone,
+        location: employee.location || prev.location,
+        languages: employee.languages || prev.languages,
+        coverImage: employee.coverImage || prev.coverImage,
+        profileImage: employee.profileImage || prev.profileImage
+      }));
+
+      if (employee.status) {
+        setWorkerStatus(employee.status);
+      }
+      if (employee.currentPlace?.name) {
+        setCurrentWorkPlace(employee.currentPlace.name);
+      }
+    }
+  }, [location.state]);
+
+  // If the page is opened by the signed-in worker, fetch the Worker doc from backend
+  useEffect(() => {
+    const shouldFetch = !location.state?.employee;
+    if (!shouldFetch) return;
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await jobOfferService.getWorkerByUser(userId);
+        const worker = res?.worker || res;
+        if (!worker || cancelled) return;
+        setWorkerInfo(prev => ({
+          ...prev,
+          id: worker._id,
+          name: worker.user?.firstName && worker.user?.lastName
+            ? `${worker.user.firstName} ${worker.user.lastName}`
+            : worker.user?.firstName || worker.user?.name || prev.name,
+          role: worker.role || prev.role,
+          experience: worker.experience || prev.experience,
+          skills: worker.skills || prev.skills,
+          bio: worker.bio || worker.user?.bio || prev.bio,
+          email: worker.user?.email || prev.email,
+          phone: worker.user?.phone || worker.phone || prev.phone,
+          location: worker.user?.location || worker.location || prev.location,
+          languages: worker.languages || prev.languages,
+          coverImage: worker.coverImage || worker.user?.coverImage || prev.coverImage,
+          profileImage: worker.profileImage || worker.user?.avatar || prev.profileImage
+        }));
+
+        if (worker.status) setWorkerStatus(worker.status.toLowerCase());
+        if (worker.comments) setComments(worker.comments || []);
+        if (worker.socialLinks) setSocialLinks(worker.socialLinks || {});
+
+        // Load evaluations from backend
+        try {
+          const evalResp = await apiGestionX.getEvaluationsByWorker(worker._id);
+          const evals = evalResp?.evaluations || [];
+          const mappedHistory = evals.map(ev => ({
+            id: ev._id,
+            place: ev.restaurant?.name || "Restaurant",
+            role: "Employé",
+            duration: ev.period || `${new Date(ev.startDate).toLocaleDateString()} - ${ev.isCurrentlyWorking ? 'Présent' : new Date(ev.endDate).toLocaleDateString()}`,
+            rating: ev.rating,
+            review: ev.comment,
+            manager: ev.manager?.user?.firstName ? `${ev.manager.user.firstName} ${ev.manager.user.lastName}` : "Manager"
+          }));
+          setWorkHistory(mappedHistory);
+        } catch (evalErr) {
+          console.warn('Évaluations non trouvées:', evalErr);
+        }
+
+        // Load CV data (skills, experience, etc.)
+        try {
+          const cvResp = await apiGestionX.getWorkerCV(worker._id);
+          if (cvResp?.cv) {
+            const cv = cvResp.cv;
+            setWorkerInfo(prev => ({
+              ...prev,
+              skills: cv.skills?.length > 0 ? cv.skills : prev.skills,
+              experience: cv.experience || prev.experience,
+              languages: cv.languages?.length > 0 ? cv.languages : prev.languages,
+              bio: cv.bio || prev.bio
+            }));
+          }
+        } catch (cvErr) {
+          console.warn('CV non trouvé:', cvErr);
+        }
+      } catch (err) {
+        console.error('Erreur fetching worker by user:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [location.state]);
   
   // ==================== COMMENTAIRES (affichage seulement) ====================
   const [comments, setComments] = useState([
@@ -524,20 +633,8 @@ export default function Profileemploye() {
   // ==================== SYSTÈME DE COMMANDES ====================
   globalOrderCounter = 0;
   
-  const [orders, setOrders] = useState(() => {
-    const initialOrders = [
-      { id: 1, name: "Café arabe", price: 150, status: "pending", time: "14:30", notes: "Moins de sucre", tableId: 1 },
-      { id: 2, name: "Café arabe", price: 150, status: "pending", time: "14:32", notes: "", tableId: 1 },
-      { id: 3, name: "Café arabe", price: 150, status: "pending", time: "14:35", notes: "Sans sucre", tableId: 2 },
-      { id: 4, name: "Cappuccino", price: 250, status: "pending", time: "14:38", notes: "Lait chaud", tableId: 2 },
-      { id: 5, name: "Thé à la menthe", price: 120, status: "pending", time: "14:40", notes: "", tableId: 1 },
-      { id: 6, name: "Thé à la menthe", price: 120, status: "pending", time: "14:42", notes: "Menthe fraîche", tableId: 3 },
-    ];
-    return initialOrders.map(order => {
-      globalOrderCounter++;
-      return { ...order, orderNumber: globalOrderCounter };
-    });
-  });
+  const [orders, setOrders] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   
   const [completedOrders, setCompletedOrders] = useState([]);
   
@@ -548,23 +645,43 @@ export default function Profileemploye() {
   
   // ==================== FUNCTIONS ====================
   useEffect(() => {
-    const interval = setInterval(() => {
-      const tables = [1, 2, 3, 4, 5];
-      const randomTable = tables[Math.floor(Math.random() * tables.length)];
-      const newOrderData = {
-        id: Date.now(),
-        name: ["Café arabe", "Thé à la menthe", "Cappuccino", "Latte", "Jus d'orange", "Croissant"][Math.floor(Math.random() * 6)],
-        price: [150, 120, 250, 220, 180, 100][Math.floor(Math.random() * 6)],
-        status: "pending",
-        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        notes: Math.random() > 0.7 ? "Note spéciale" : "",
-        tableId: randomTable
-      };
-      const newOrder = createNewOrder(newOrderData);
-      setOrders(prev => [...prev, newOrder]);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const fetchWorkerOrders = async () => {
+      const workerId = location.state?.employee?.id || location.state?.employee?._id || workerInfo.id || workerInfo._id;
+      if (!workerId) {
+        setIsLoadingOrders(false);
+        return;
+      }
+
+      try {
+        setIsLoadingOrders(true);
+        const workerOrders = await apiUser.getOrdersByWorker(workerId);
+        const mappedOrders = workerOrders.map(order => {
+          const firstItem = Array.isArray(order.items) && order.items.length > 0 ? order.items[0] : {};
+          const tableNumber = order.tableId?.numero || order.tableId?.number || order.tableId || 'N/A';
+          return {
+            id: order._id || order.id,
+            name: firstItem.name || `Commande #${order.orderNumber}`,
+            price: order.total || firstItem.total || firstItem.prix || 0,
+            status: order.status === 'en attente' || order.status === 'partiellement livre' || order.status === 'partiellement annule' ? 'pending' :
+                    order.status === 'complete' ? 'completed' :
+                    order.status === 'annule' ? 'cancelled' : 'pending',
+            time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+            notes: firstItem.notes || '',
+            tableId: tableNumber,
+            orderNumber: order.orderNumber || order._id || Date.now()
+          };
+        });
+        setOrders(mappedOrders);
+      } catch (error) {
+        console.error('Erreur lors du chargement des commandes du backend :', error);
+        setOrders([]);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    fetchWorkerOrders();
+  }, [location.state, workerInfo]);
   
   const updateOrderStatus = useCallback((orderId, newStatus) => {
     setOrders(prevOrders => 
@@ -601,13 +718,36 @@ export default function Profileemploye() {
   }, []);
   
   // ✅ Fonction pour sauvegarder le CV sans fermer le modal prématurément
-  const handleSaveCV = useCallback((updatedInfo) => {
-    setWorkerInfo(updatedInfo);
-    localStorage.setItem("workerInfo", JSON.stringify(updatedInfo));
-    setShowWorkerCV(false);
-    setCvKey(prev => prev + 1); // ✅ تغيير المفتاح بعد الحفظ
-    alert("✅ Profil mis à jour avec succès!");
-  }, []);
+  const handleSaveCV = useCallback(async (updatedInfo) => {
+    const workerId = updatedInfo.id || workerInfo.id;
+    if (!workerId) {
+      alert("❌ ID employé manquant");
+      return;
+    }
+
+    try {
+      await apiGestionX.updateCV(workerId, {
+        name: updatedInfo.name,
+        role: updatedInfo.role,
+        bio: updatedInfo.bio,
+        email: updatedInfo.email,
+        phone: updatedInfo.phone,
+        location: updatedInfo.location,
+        experience: updatedInfo.experience,
+        skills: updatedInfo.skills,
+        languages: updatedInfo.languages,
+        coverImage: updatedInfo.coverImage,
+        profileImage: updatedInfo.profileImage
+      });
+      setWorkerInfo(updatedInfo);
+      setShowWorkerCV(false);
+      setCvKey(prev => prev + 1);
+      alert("✅ CV mis à jour avec succès!");
+    } catch (error) {
+      console.error('❌ Erreur mise à jour CV:', error);
+      alert(`❌ Échec de la mise à jour: ${error?.message || JSON.stringify(error)}`);
+    }
+  }, [workerInfo.id]);
   
   const updateSocialLinks = (links) => {
     setSocialLinks(links);

@@ -6,6 +6,7 @@ import Navbar from "components/Navbars/IndexNavbar";
 import CVSection from "components/Common/cvsection";
 import EvaluationSection from "components/Common/evaluationsection";
 import SocialFooter from "components/Common/socialFooter";
+import apiGestionX from "services/apiGestionX";
 
 export default function EmployeeEvaluation() {
   const { id } = useParams();
@@ -13,27 +14,23 @@ export default function EmployeeEvaluation() {
   const history = useHistory();
   const employeeFromList = location.state?.employee || null;
   
-  // ==================== DONNÉES DU PROFIL (مثل Profile.js) ====================
+  // ==================== DONNÉES DU PROFIL ====================
   const [workerInfo, setWorkerInfo] = useState({
-    name: "Jenna Stones",
-    role: "Serveuse / Barmaid",
-    experience: "5 ans d'expérience",
-    skills: ["Service client", "Gestion des commandes", "Polyvalence", "Travail d'équipe", "Anglais courant", "Rapidité"],
-    bio: "Serveuse professionnelle avec 5 ans d'expérience dans la restauration. Spécialisée dans le service rapide et la satisfaction client. Passionnée par mon métier et toujours souriante.",
-    email: "jenna.stones@example.com",
-    phone: "+33 6 12 34 56 78",
-    location: "Paris, France",
-    languages: ["Français", "Anglais", "Espagnol"],
+    name: "",
+    role: "Employé",
+    experience: "",
+    skills: [],
+    bio: "",
+    email: "",
+    phone: "",
+    location: "",
+    languages: [],
     coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-    profileImage: "https://randomuser.me/api/portraits/women/68.jpg"
+    profileImage: "https://randomuser.me/api/portraits/men/32.jpg"
   });
   
   // ==================== HISTORIQUE DE TRAVAIL (ÉVALUATIONS) ====================
-  const [workHistory, setWorkHistory] = useState([
-    { id: 1, place: "Le Café Paris", role: "Serveuse", duration: "2023 - Présent", rating: 5, review: "Excellente serveuse, très professionnelle !", manager: "Ahmed Benali" },
-    { id: 2, place: "Restaurant La Mer", role: "Barmaid", duration: "2021 - 2023", rating: 4, review: "Bon travail, équipe sympathique.", manager: "Sophie Martin" },
-    { id: 3, place: "Café Central", role: "Stagiaire Serveuse", duration: "2020 - 2021", rating: 4.5, review: "Apprentissage rapide, très motivée.", manager: "Karim El Fassi" }
-  ]);
+  const [workHistory, setWorkHistory] = useState([]);
   
   // ==================== SOCIAL LINKS ====================
   const [socialLinks, setSocialLinks] = useState({
@@ -48,9 +45,10 @@ export default function EmployeeEvaluation() {
   const [showWorkerCV, setShowWorkerCV] = useState(false);
   const [showEvaluations, setShowEvaluations] = useState(false);
   const [workerStatus, setWorkerStatus] = useState("working");
-  const [currentWorkPlace, setCurrentWorkPlace] = useState("Le Café Paris");
-  
-  // قائمة أماكن العمل المتاحة (للمدير)
+  const [currentWorkPlace, setCurrentWorkPlace] = useState("Non défini");
+  const [loading, setLoading] = useState(true);
+
+  // ==================== LISTE DES LIEUX DE TRAVAIL ====================
   const availablePlaces = [
     { id: 1, name: "Restaurant Andalous", icon: "🏪" },
     { id: 2, name: "Café Parisien", icon: "☕" },
@@ -59,85 +57,107 @@ export default function EmployeeEvaluation() {
     { id: 5, name: "Le Gourmet", icon: "🍽️" }
   ];
   
-  // بيانات الموظفين (إذا جاء من رابط بدون بيانات)
-  const employeesData = {
-    1: {
-      name: "Youssef",
-      role: "Employé",
-      profileImage: "https://randomuser.me/api/portraits/men/1.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      location: "Casablanca, Maroc",
-      email: "youssef@example.com",
-      phone: "+212 6 12 34 56 78",
-      skills: ["Service client", "Rapidité", "Polyvalence"],
-      bio: "Employé dévoué avec 3 ans d'expérience.",
-      languages: ["Français", "Arabe"]
-    },
-    2: {
-      name: "Mohamed",
-      role: "Employé",
-      profileImage: "https://randomuser.me/api/portraits/men/2.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      location: "Rabat, Maroc",
-      email: "mohamed@example.com",
-      phone: "+212 6 98 76 54 32",
-      skills: ["Gestion des stocks", "Organisation", "Travail d'équipe"],
-      bio: "Employé sérieux et organisé.",
-      languages: ["Français", "Arabe"]
-    }
-  };
-  
-  // بيانات التقييمات لكل موظف
-  const employeesWorkHistory = {
-    1: [
-      { id: 1, place: "Restaurant Andalous", role: "Employé", duration: "15/01/2024", rating: 5, review: "Excellent employé !", manager: "Ahmed Benali" }
-    ],
-    2: [
-      { id: 1, place: "Café Parisien", role: "Employé", duration: "01/02/2024", rating: 4, review: "Travail correct.", manager: "Sophie Martin" }
-    ]
-  };
-  
+  // ==================== CHARGEMENT DES DONNÉES DEPUIS LE BACKEND ====================
   useEffect(() => {
-    // إذا جاءت بيانات الموظف من المدير
-    if (employeeFromList && employeeFromList.id) {
-      setWorkerInfo({
-        ...workerInfo,
-        name: employeeFromList.name,
-        role: employeeFromList.role || "Employé",
-        profileImage: employeeFromList.profileImage,
-        coverImage: employeeFromList.coverImage,
-        location: employeeFromList.location,
-        email: employeeFromList.email,
-        phone: employeeFromList.phone,
-        skills: employeeFromList.skills,
-        bio: employeeFromList.bio
-      });
-      setWorkHistory(employeesWorkHistory[employeeFromList.id] || []);
-      setWorkerStatus(employeeFromList.status || "working");
-      setCurrentWorkPlace(employeeFromList.currentPlace?.name || "Non défini");
-    }
-    // إذا جاء من رابط مع id
-    else if (id && employeesData[id]) {
-      const emp = employeesData[id];
-      setWorkerInfo({
-        ...workerInfo,
-        name: emp.name,
-        role: emp.role,
-        profileImage: emp.profileImage,
-        coverImage: emp.coverImage,
-        location: emp.location,
-        email: emp.email,
-        phone: emp.phone,
-        skills: emp.skills,
-        bio: emp.bio
-      });
-      setWorkHistory(employeesWorkHistory[id] || []);
-    }
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const workerId = employeeFromList?.id || id;
+        if (!workerId) {
+          setLoading(false);
+          return;
+        }
+
+        // Use data from navigation state if available
+        if (employeeFromList) {
+          const user = employeeFromList;
+          setWorkerInfo({
+            name: user.name || "",
+            role: user.role || "Employé",
+            experience: user.experience || "",
+            skills: user.skills || [],
+            bio: user.bio || "",
+            email: user.email || "",
+            phone: user.phone || "",
+            location: user.location || "",
+            languages: user.languages || [],
+            coverImage: user.coverImage || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+            profileImage: user.profileImage || "https://randomuser.me/api/portraits/men/32.jpg"
+          });
+          setWorkerStatus(user.status || "working");
+          setCurrentWorkPlace(user.currentPlace?.name || "Non défini");
+        }
+
+        // Fetch evaluations from backend
+        try {
+          const evalResp = await apiGestionX.getEvaluationsByWorker(workerId);
+          console.log('📋 Évaluations reçues:', evalResp);
+          const evals = evalResp?.evaluations || [];
+          const mappedHistory = evals.map(ev => ({
+            id: ev._id,
+            place: ev.restaurant?.name || "Restaurant",
+            role: "Employé",
+            duration: ev.period || `${new Date(ev.startDate).toLocaleDateString()} - ${ev.isCurrentlyWorking ? 'Présent' : new Date(ev.endDate).toLocaleDateString()}`,
+            rating: ev.rating,
+            review: ev.comment,
+            manager: ev.manager?.user?.firstName ? `${ev.manager.user.firstName} ${ev.manager.user.lastName}` : "Manager"
+          }));
+          console.log('📋 Historique mappé:', mappedHistory);
+          setWorkHistory(mappedHistory);
+        } catch (evalError) {
+          console.warn('Erreur chargement évaluations:', evalError);
+        }
+
+        // If no data from navigation, try to fetch worker info
+        if (!employeeFromList) {
+          try {
+            const managerId = localStorage.getItem('userId');
+            const cvResp = await apiGestionX.getWorkerCV(workerId);
+            if (cvResp) {
+              setWorkerInfo(prev => ({
+                ...prev,
+                name: cvResp.worker?.user?.firstName ? `${cvResp.worker.user.firstName} ${cvResp.worker.user.lastName}` : prev.name,
+                bio: cvResp.bio || prev.bio,
+                skills: cvResp.skills?.length > 0 ? cvResp.skills : prev.skills,
+                languages: cvResp.languages?.length > 0 ? cvResp.languages : prev.languages,
+                experience: cvResp.experience || prev.experience
+              }));
+            }
+          } catch (cvError) {
+            console.warn('Erreur chargement CV:', cvError);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement données employé:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [id, employeeFromList]);
   
-  const handleAddEvaluation = (updatedHistory) => {
-    setWorkHistory(updatedHistory);
-    alert("✅ Évaluation ajoutée avec succès !");
+  const handleAddEvaluation = async (updatedHistory) => {
+    const workerId = employeeFromList?.id || id;
+    const managerId = localStorage.getItem('userId');
+    const newEval = updatedHistory[0];
+
+    if (!workerId || !managerId || !newEval) {
+      setWorkHistory(updatedHistory);
+      return;
+    }
+
+    try {
+      await apiGestionX.addEvaluation(managerId, workerId, {
+        rating: newEval.rating,
+        comment: newEval.review
+      });
+      setWorkHistory(updatedHistory);
+      alert("✅ Évaluation enregistrée avec succès !");
+    } catch (error) {
+      console.error('❌ Erreur enregistrement évaluation:', error);
+      alert(`❌ Échec de l'enregistrement: ${error?.message || JSON.stringify(error)}`);
+    }
   };
   
   const handleStatusChange = (newStatus) => {
@@ -742,9 +762,10 @@ export default function EmployeeEvaluation() {
                     </div>
                   </div>
                   
-                  {/* ========== SECTION ÉVALUATION (للمدير فقط - يمكنه إضافة تقييمات) ========== */}
+                  {/* ========== SECTION ÉVALUATION ========== */}
                   <div className="evaluation-section-container">
                     <EvaluationSection 
+                      key={workHistory.length}
                       workHistory={workHistory}
                       onAddEvaluation={handleAddEvaluation}
                       canAddEvaluation={true}
