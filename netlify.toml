@@ -1,6 +1,6 @@
 [build]
   command = "CI=false npm run build"
-  publish = "dist"
+  publish = "build"
 
 [context.production.environment]
   CI = "false"
