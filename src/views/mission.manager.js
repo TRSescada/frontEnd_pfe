@@ -6,6 +6,7 @@ import RestaurantCard from "components/Common/restaurantCard";
 import EmployeeCard from "components/Common/employecard";
 import ProductCard from "components/Common/productCard";
 import apiGestionX from "services/apiGestionX";
+import jobOfferService from "services/jobOfferService";
 
 export default function VisitorProfile() {
   const history = useHistory();
@@ -46,6 +47,13 @@ export default function VisitorProfile() {
   // ==================== EMPLOYEES ====================
   const [employees, setEmployees] = useState([]);
   
+  // ==================== TABLES ====================
+  const [tables, setTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [orderNotification, setOrderNotification] = useState(null);
+
   // ==================== STATES للمودالات ====================
   const [showRestaurantModal, setShowRestaurantModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
@@ -80,7 +88,7 @@ export default function VisitorProfile() {
               products: products.map(p => ({
                 id: p._id,
                 name: p.name || "Produit",
-                price: p.price || 0,
+                prix: p.prix || 0,
                 image: p.image || "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
                 description: p.description || ""
               }))
@@ -114,6 +122,14 @@ export default function VisitorProfile() {
       } catch (err) {
         console.warn('Erreur chargement employés:', err);
       }
+
+      try {
+        const tablesResp = await apiGestionX.getTablesByRestaurant(restaurantId);
+        const tablesList = Array.isArray(tablesResp) ? tablesResp : tablesResp?.tables || [];
+        setTables(tablesList);
+      } catch (err) {
+        console.warn('Erreur chargement tables:', err);
+      }
     };
 
     loadData();
@@ -121,6 +137,40 @@ export default function VisitorProfile() {
 
   const goBack = () => {
     history.goBack();
+  };
+
+  const handleCommanderClick = (product) => {
+    if (tables.length === 0) {
+      setOrderNotification({ type: 'error', message: 'Aucune table disponible pour ce restaurant' });
+      setTimeout(() => setOrderNotification(null), 3000);
+      return;
+    }
+    setPendingProduct(product);
+    setShowTableModal(true);
+  };
+
+  const handleTableSelect = async (table) => {
+    if (!pendingProduct) return;
+    setSelectedTable(table);
+    setShowTableModal(false);
+    try {
+      let workerId = null;
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const workerResp = await jobOfferService.getWorkerByUser(userId);
+          workerId = workerResp?.worker?._id || workerResp?._id || null;
+        }
+      } catch {}
+      await apiGestionX.addToCart(table._id, pendingProduct.id, 1);
+      await apiGestionX.createOrderFromCart(table._id, workerId);
+      setOrderNotification({ type: 'success', message: `Commande confirmée : ${pendingProduct.name} (Table ${table.numero})` });
+    } catch (err) {
+      setOrderNotification({ type: 'error', message: err.message || 'Erreur lors de la commande' });
+    }
+    setTimeout(() => setOrderNotification(null), 3000);
+    setPendingProduct(null);
+    setSelectedTable(null);
   };
   
   // ==================== STYLES ====================
@@ -880,6 +930,7 @@ export default function VisitorProfile() {
                   key={product.id}
                   product={product}
                   showOrderButton={true}
+                  onClick={handleCommanderClick}
                 />
               ))}
             </div>
@@ -911,7 +962,46 @@ export default function VisitorProfile() {
           </div>
         </div>
       )}
-      
+
+      {/* ========== NOTIFICATION ========== */}
+      {orderNotification && (
+        <div style={{
+          position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999,
+          background: orderNotification.type === 'success' ? 'linear-gradient(135deg, #22c55e, #15803d)' : 'linear-gradient(135deg, #ef4444, #b91c1c)',
+          color: 'white', padding: '16px 24px', borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <span style={{ fontSize: '1.5rem' }}>{orderNotification.type === 'success' ? '✅' : '❌'}</span>
+          <span style={{ fontWeight: 'bold' }}>{orderNotification.message}</span>
+        </div>
+      )}
+
+      {/* ========== MODAL Table Selection ========== */}
+      {showTableModal && (
+        <div className="modal-overlay" onClick={() => { setShowTableModal(false); setPendingProduct(null); }}>
+          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => { setShowTableModal(false); setPendingProduct(null); }}>✕</button>
+            <div className="text-center">
+              <div className="text-5xl mb-3">🪑</div>
+              <h2 className="text-2xl font-bold text-white mb-2">Choisir une table</h2>
+              <div className="w-16 h-0.5 bg-green-500 mx-auto mb-4"></div>
+              <p className="text-white/80 text-sm mb-6">Produit : <strong>{pendingProduct?.name}</strong> — {pendingProduct?.prix} DA</p>
+            </div>
+            <div className="menu-grid">
+              {tables.map(table => (
+                <div key={table._id} className="category-card" onClick={() => handleTableSelect(table)} style={{ cursor: 'pointer' }}>
+                  <div className="text-3xl mb-2">🪑</div>
+                  <h3 className="text-lg font-bold text-white">Table {table.numero}</h3>
+                  <p className="text-white/70 text-sm mt-1">{table.etat === 'libre' ? '🟢 Libre' : '🔴 Occupée'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   );

@@ -77,7 +77,7 @@ function AppRoutes() {
         <RoleRoute path="/visitormanagerprofile" exact allowedRoles={["MANAGER"]} component={VisitorManagerProfile} />
         <RoleRoute path="/visitorprofile" exact allowedRoles={["WORKER"]} component={VisitorProfile} />
         <RoleRoute path="/profileemploye" exact allowedRoles={["WORKER"]} component={Profileemploye} />
-        <Route path="/menu" exact component={Menu} />
+        <Route path="/menu/:restaurantId/:tableNumber" exact component={Menu} />
         <Route path="/restaurants3" exact component={ListeRestaurant3} />
         <Route path="/restaurants" exact component={RestaurantsPage} />
         <Route path="/restaurants2" exact component={ListeRestaurant2} />

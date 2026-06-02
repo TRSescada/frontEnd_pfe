@@ -644,54 +644,60 @@ export default function Profileemploye() {
   }, [orders]);
   
   // ==================== FUNCTIONS ====================
-  useEffect(() => {
-    const fetchWorkerOrders = async () => {
-      const workerId = location.state?.employee?.id || location.state?.employee?._id || workerInfo.id || workerInfo._id;
-      if (!workerId) {
-        setIsLoadingOrders(false);
-        return;
-      }
+  const fetchWorkerOrders = useCallback(async () => {
+    const workerId = location.state?.employee?.id || location.state?.employee?._id || workerInfo.id || workerInfo._id;
+    if (!workerId) {
+      setIsLoadingOrders(false);
+      return;
+    }
 
-      try {
-        setIsLoadingOrders(true);
-        const workerOrders = await apiUser.getOrdersByWorker(workerId);
-        const mappedOrders = workerOrders.map(order => {
-          const firstItem = Array.isArray(order.items) && order.items.length > 0 ? order.items[0] : {};
-          const tableNumber = order.tableId?.numero || order.tableId?.number || order.tableId || 'N/A';
-          return {
-            id: order._id || order.id,
-            name: firstItem.name || `Commande #${order.orderNumber}`,
-            price: order.total || firstItem.total || firstItem.prix || 0,
-            status: order.status === 'en attente' || order.status === 'partiellement livre' || order.status === 'partiellement annule' ? 'pending' :
-                    order.status === 'complete' ? 'completed' :
-                    order.status === 'annule' ? 'cancelled' : 'pending',
-            time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
-            notes: firstItem.notes || '',
-            tableId: tableNumber,
-            orderNumber: order.orderNumber || order._id || Date.now()
-          };
-        });
-        setOrders(mappedOrders);
-      } catch (error) {
-        console.error('Erreur lors du chargement des commandes du backend :', error);
-        setOrders([]);
-      } finally {
-        setIsLoadingOrders(false);
-      }
-    };
-
-    fetchWorkerOrders();
+    try {
+      setIsLoadingOrders(true);
+      const workerOrders = await apiUser.getOrdersByWorker(workerId);
+      const mappedOrders = workerOrders.map(order => {
+        const firstItem = Array.isArray(order.items) && order.items.length > 0 ? order.items[0] : {};
+        const tableObj = order.tableId;
+        const tableNumber = tableObj?.numero || tableObj?.number || tableObj || 'N/A';
+        const tableObjectId = tableObj?._id || null;
+        return {
+          id: order._id || order.id,
+          name: firstItem.name || `Commande #${order.orderNumber}`,
+          price: order.total || firstItem.total || firstItem.prix || 0,
+          status: order.status === 'en attente' || order.status === 'partiellement livre' || order.status === 'partiellement annule' ? 'pending' :
+                  order.status === 'complete' ? 'completed' :
+                  order.status === 'annule' ? 'cancelled' : 'pending',
+          time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+          notes: firstItem.notes || '',
+          tableId: tableNumber,
+          tableObjectId: tableObjectId,
+          orderNumber: order.orderNumber || order._id || Date.now()
+        };
+      });
+      setOrders(mappedOrders);
+    } catch (error) {
+      console.error('Erreur lors du chargement des commandes du backend :', error);
+      setOrders([]);
+    } finally {
+      setIsLoadingOrders(false);
+    }
   }, [location.state, workerInfo]);
+
+  useEffect(() => {
+    fetchWorkerOrders();
+  }, [fetchWorkerOrders]);
   
-  const updateOrderStatus = useCallback((orderId, newStatus) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
-  }, []);
+  const updateOrderStatus = useCallback(async (orderId, newStatus) => {
+    const backendStatus = newStatus === 'completed' ? 'livree' : newStatus === 'cancelled' ? 'annule' : 'en attente';
+    try {
+      await apiUser.updateAllItemsStatus(orderId, backendStatus);
+      await fetchWorkerOrders();
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
+      alert('❌ Erreur lors de la mise à jour du statut');
+    }
+  }, [fetchWorkerOrders]);
   
-  const liberateTable = useCallback((tableId) => {
+  const liberateTable = useCallback(async (tableId) => {
     const ordersToLiberate = completedOrders.filter(order => order.tableId === tableId);
     
     if (ordersToLiberate.length === 0) {
@@ -702,9 +708,20 @@ export default function Profileemploye() {
     const totalAmount = ordersToLiberate.reduce((sum, o) => sum + o.price, 0);
     
     if (window.confirm(`✅ Confirmer la libération de la table N° ${tableId}?\n\n📊 Nombre de commandes: ${ordersToLiberate.length}\n💰 Total: ${totalAmount} DA\n\n⚠️ Cette action est irréversible!`)) {
-      setOrders(prev => prev.filter(order => !(order.tableId === tableId && order.status === 'completed')));
+      try {
+        const tableObj = ordersToLiberate.find(o => o.tableObjectId)?.tableObjectId;
+        if (tableObj) {
+          await apiGestionX.updateTableStatus(tableObj, 'libre');
+          await apiUser.deleteCompletedOrdersByTable(tableObj);
+        }
+        await fetchWorkerOrders();
+        alert(`✅ Table ${tableId} libérée avec succès`);
+      } catch (error) {
+        console.error('Erreur libération table:', error);
+        alert(`❌ Erreur lors de la libération: ${error?.message || JSON.stringify(error)}`);
+      }
     }
-  }, [completedOrders]);
+  }, [completedOrders, fetchWorkerOrders]);
   
   // Fonctions vides pour les props requises mais inutilisées (read-only)
   const emptyFunction = useCallback(() => {}, []);
@@ -767,6 +784,7 @@ export default function Profileemploye() {
         groups[productKey] = {
           id: productKey,
           tableNumber: tableId,
+          tableObjectId: order.tableObjectId,
           name: order.name,
           price: order.price,
           quantity: 0,
@@ -787,6 +805,7 @@ export default function Profileemploye() {
         tablesMap[tableId] = {
           id: tableId,
           tableNumber: tableId,
+          tableObjectId: group.tableObjectId,
           items: [],
           total: 0,
           orderCount: 0

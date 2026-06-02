@@ -1,91 +1,73 @@
-// src/views/Profile.js - صفحة الزائر لحساب العامل (قراءة فقط)
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import Footer from "components/Footers/Footer.js";
 import Navbar from "components/Navbars/AuthNavbar.js";
 import CVSection from "components/Common/cvsection";
 import CommentSection from "components/Common/commentSection";
 import SocialFooter from "components/Common/socialFooter";
+import jobOfferService from "services/jobOfferService";
 
 export default function Profile() {
   const location = useLocation();
+  const { id } = useParams();
   const fromMenu = location.state?.fromMenu || false;
   const waiterInfoFromMenu = location.state?.waiterInfo || null;
   
-  // ==================== DONNÉES DU PROFIL (مستوردة من localStorage) ====================
-  const [workerInfo, setWorkerInfo] = useState({
-    name: "Jenna Stones",
-    role: "Serveuse / Barmaid",
-    experience: "5 ans d'expérience",
-    skills: ["Service client", "Gestion des commandes", "Polyvalence", "Travail d'équipe", "Anglais courant", "Rapidité"],
-    bio: "Serveuse professionnelle avec 5 ans d'expérience dans la restauration. Spécialisée dans le service rapide et la satisfaction client. Passionnée par mon métier et toujours souriante.",
-    email: "jenna.stones@example.com",
-    phone: "+33 6 12 34 56 78",
-    location: "Paris, France",
-    languages: ["Français", "Anglais", "Espagnol"],
-    coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-    profileImage: "https://randomuser.me/api/portraits/women/68.jpg"
-  });
-  
-  // ==================== COMMENTAIRES (مستوردة من localStorage) ====================
-  const [comments, setComments] = useState([
-    { id: 1, author: "Sophie Martin", text: "Excellente prestation ! Je recommande vivement 👍", rating: 5, date: "2024-03-15", avatar: "https://randomuser.me/api/portraits/women/1.jpg" },
-    { id: 2, author: "Thomas Dubois", text: "Service rapide et professionnel. Très satisfait.", rating: 4, date: "2024-03-10", avatar: "https://randomuser.me/api/portraits/men/2.jpg" },
-    { id: 3, author: "Marie Lambert", text: "Super expérience, à refaire ! 🌟", rating: 5, date: "2024-03-05", avatar: "https://randomuser.me/api/portraits/women/3.jpg" }
-  ]);
-  
-  // ==================== HISTORIQUE DE TRAVAIL (ÉVALUATIONS) ====================
+  const [workerInfo, setWorkerInfo] = useState(null);
+  const [comments, setComments] = useState([]);
   const [workHistory, setWorkHistory] = useState([]);
-  
-  // ==================== SOCIAL LINKS ====================
-  const [socialLinks, setSocialLinks] = useState({
-    facebook: "",
-    instagram: "",
-    twitter: "",
-    linkedin: "",
-    tiktok: ""
-  });
-  
-  // ==================== STATES ====================
+  const [evaluations, setEvaluations] = useState([]);
+  const [socialLinks, setSocialLinks] = useState({ facebook: "", instagram: "", twitter: "", linkedin: "", tiktok: "" });
   const [showWorkerCV, setShowWorkerCV] = useState(false);
   const [showCommentsList, setShowCommentsList] = useState(false);
   const [showEvaluations, setShowEvaluations] = useState(false);
   const [showAddCommentModal, setShowAddCommentModal] = useState(false);
   const [workerStatus, setWorkerStatus] = useState("working");
-  const [currentWorkPlace, setCurrentWorkPlace] = useState("Le Café Paris");
-  
-  // ==================== CHARGEMENT DES DONNÉES ====================
+  const [currentWorkPlace, setCurrentWorkPlace] = useState("");
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const savedWorkerInfo = localStorage.getItem("workerInfo");
-    if (savedWorkerInfo) setWorkerInfo(JSON.parse(savedWorkerInfo));
-    
-    const savedComments = localStorage.getItem("comments");
-    if (savedComments) setComments(JSON.parse(savedComments));
-    
-    // ✅ IMPORTANT: Charger les évaluations depuis localStorage (pour qu'elles soient synchronisées avec EmployeeEvaluation)
-    const savedWorkHistory = localStorage.getItem("workHistory");
-    if (savedWorkHistory) {
-      setWorkHistory(JSON.parse(savedWorkHistory));
-    } else {
-      // Données par défaut si localStorage est vide
-      setWorkHistory([
-        { place: "Le Café Paris", role: "Serveuse", duration: "2023 - Présent", rating: 5, review: "Excellente serveuse, très professionnelle !" },
-        { place: "Restaurant La Mer", role: "Barmaid", duration: "2021 - 2023", rating: 4, review: "Bon travail, équipe sympathique." },
-        { place: "Café Central", role: "Stagiaire Serveuse", duration: "2020 - 2021", rating: 4.5, review: "Apprentissage rapide, très motivée." }
-      ]);
-    }
-    
-    const savedSocialLinks = localStorage.getItem("socialLinks");
-    if (savedSocialLinks) setSocialLinks(JSON.parse(savedSocialLinks));
-    
-    const savedWorkPlace = localStorage.getItem("currentWorkPlace");
-    if (savedWorkPlace) setCurrentWorkPlace(savedWorkPlace);
-    
-    const savedStatus = localStorage.getItem("workerStatus");
-    if (savedStatus) setWorkerStatus(savedStatus);
-  }, []);
-  
-  // ==================== GESTION DES COMMENTAIRES ====================
+    const fetchWorkerData = async () => {
+      try {
+        setLoading(true);
+        const response = await jobOfferService.getWorkerByUser(id);
+        const worker = response.worker;
+        if (!worker) return;
+
+        const user = worker.user || {};
+        setWorkerInfo({
+          _id: worker._id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Employé',
+          role: worker.role || user.role || 'Serveur',
+          experience: worker.experience || '',
+          skills: worker.skills || [],
+          bio: user.bio || worker.bio || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          location: user.location || '',
+          languages: worker.languages || [],
+          coverImage: user.coverImage || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
+          profileImage: user.profileImage || user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName || 'E')}&background=22c55e&color=ffffff`
+        });
+
+        setWorkerStatus(worker.status === 'WORKING' ? 'working' : 'seeking');
+        setWorkHistory(worker.workHistory || []);
+        setComments(worker.comments || []);
+        setEvaluations(worker.evaluations || []);
+
+        if (worker.restaurant?.name) {
+          setCurrentWorkPlace(worker.restaurant.name);
+        }
+      } catch (err) {
+        console.error("Error fetching worker:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchWorkerData();
+  }, [id]);
+
   const handleAddComment = (newComment) => {
     const comment = {
       id: Date.now(),
@@ -95,11 +77,9 @@ export default function Profile() {
       date: new Date().toISOString().split('T')[0],
       avatar: "https://randomuser.me/api/portraits/lego/1.jpg"
     };
-    const updatedComments = [comment, ...comments];
-    setComments(updatedComments);
-    localStorage.setItem("comments", JSON.stringify(updatedComments));
+    setComments([comment, ...comments]);
     setShowAddCommentModal(false);
-    alert("✅ Commentaire ajouté avec succès !");
+    alert("Commentaire ajoute avec succes !");
   };
   
   // ==================== STYLES ====================
@@ -579,6 +559,36 @@ export default function Profile() {
     }
   `;
 
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a2a" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "20px" }}>⏳</div>
+            <p style={{ color: "#22c55e", fontSize: "1.2rem" }}>Chargement du profil...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!workerInfo) {
+    return (
+      <>
+        <Navbar />
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a2a" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "20px" }}>❌</div>
+            <p style={{ color: "#ef4444", fontSize: "1.2rem" }}>Worker non trouvé</p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <style>{style}</style>
@@ -725,28 +735,31 @@ export default function Profile() {
         </div>
       )}
       
-      {/* Modal Évaluations (maintenant chargées depuis localStorage) */}
+      {/* Modal Évaluations */}
       {showEvaluations && (
         <div className="modal-overlay" onClick={() => setShowEvaluations(false)}>
           <div className="modal-content-evaluations" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', width: '90%', background: 'linear-gradient(135deg, #1a1a3a, #0d0d2b)', borderRadius: '30px', border: '2px solid #22c55e' }}>
             <button onClick={() => setShowEvaluations(false)} className="close-btn">✕</button>
             <div>
-              <h3 className="text-lg font-bold text-white mb-3">📋 Historique des évaluations</h3>
-              {workHistory.length === 0 ? (
-                <p className="text-white text-center">Aucune évaluation pour le moment.</p>
+              <h3 className="text-lg font-bold text-white mb-3">Evaluations</h3>
+              {evaluations.length === 0 ? (
+                <p className="text-white text-center">Aucune evaluation pour le moment.</p>
               ) : (
-                workHistory.map((work, index) => (
-                  <div key={index} className="work-history-item">
+                evaluations.map((ev, index) => (
+                  <div key={ev._id || index} className="work-history-item">
                     <div className="flex justify-between items-center flex-wrap">
-                      <h4 className="text-white font-bold">{work.place}</h4>
+                      <h4 className="text-white font-bold">{ev.restaurant?.name || 'Restaurant'}</h4>
                       <div className="stars">
                         {[...Array(5)].map((_, i) => (
-                          <span key={i} style={{ color: i < work.rating ? '#ffc107' : '#4a4a4a', fontSize: '16px' }}>★</span>
+                          <span key={i} style={{ color: i < (ev.rating || 0) ? '#ffc107' : '#4a4a4a', fontSize: '16px' }}>★</span>
                         ))}
                       </div>
                     </div>
-                    <p className="text-white text-sm">{work.role} • {work.duration}</p>
-                    <p className="text-white text-sm mt-2">"{work.review}"</p>
+                    <p className="text-white text-sm mt-2">"{ev.comment}"</p>
+                    <p className="text-white text-xs mt-1" style={{ opacity: 0.6 }}>
+                      {ev.startDate ? new Date(ev.startDate).toLocaleDateString('fr-FR') : ''}
+                      {ev.endDate ? ` - ${new Date(ev.endDate).toLocaleDateString('fr-FR')}` : ' - Present'}
+                    </p>
                   </div>
                 ))
               )}
@@ -767,24 +780,28 @@ export default function Profile() {
               </div>
               <div className="mt-4">
                 <h3 className="text-lg font-semibold text-white mb-3 text-left">
-                  📖 Commentaires récents ({comments.length})
+                  Commentaires recents ({comments.length})
                 </h3>
-                {comments.map((comment) => (
-                  <div key={comment.id} className="work-history-item" style={{ borderLeftColor: '#a855f7' }}>
-                    <div className="flex justify-between items-start flex-wrap mb-2">
-                      <div>
-                        <h4 className="text-white font-bold">{comment.author}</h4>
-                        <p className="text-white text-xs">{comment.date}</p>
+                {comments.length === 0 ? (
+                  <p className="text-white text-center">Aucun commentaire pour le moment.</p>
+                ) : (
+                  comments.map((comment, index) => (
+                    <div key={comment._id || index} className="work-history-item" style={{ borderLeftColor: '#a855f7' }}>
+                      <div className="flex justify-between items-start flex-wrap mb-2">
+                        <div>
+                          <h4 className="text-white font-bold">{comment.clientName || 'Client'}</h4>
+                          <p className="text-white text-xs">{comment.createdAt ? new Date(comment.createdAt).toLocaleDateString('fr-FR') : ''}</p>
+                        </div>
+                        <div className="stars">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} style={{ color: i < (comment.rating || 0) ? '#ffc107' : '#4a4a4a', fontSize: '16px' }}>★</span>
+                          ))}
+                        </div>
                       </div>
-                      <div className="stars">
-                        {[...Array(5)].map((_, i) => (
-                          <span key={i} style={{ color: i < comment.rating ? '#ffc107' : '#4a4a4a', fontSize: '16px' }}>★</span>
-                        ))}
-                      </div>
+                      <p className="text-white text-sm mt-2">{comment.comment}</p>
                     </div>
-                    <p className="text-white text-sm mt-2">{comment.text}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>

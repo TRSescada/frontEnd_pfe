@@ -33,6 +33,15 @@ export const apiGestionX = {
         }
     },
 
+    getRestaurantById: async (restaurantId) => {
+        try {
+            const response = await axiosInstance.get(`restaurant/${restaurantId}`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     getWorkersByRestaurant: async (restaurantId) => {
         try {
             const response = await axiosInstance.get(`workers/restaurant/${restaurantId}`);
@@ -255,6 +264,15 @@ export const apiGestionX = {
     },
 
     // ==================== TABLES (additional) ====================
+    updateTableStatus: async (tableId, etat) => {
+        try {
+            const response = await axiosInstance.put(`table/${tableId}/status`, { etat });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     getTableById: async (tableId) => {
         try {
             const response = await axiosInstance.get(`table/${tableId}`);
@@ -301,6 +319,25 @@ export const apiGestionX = {
         }
     },
 
+    // ==================== CART / ORDER ====================
+    addToCart: async (tableId, productId, quantity = 1) => {
+        try {
+            const response = await axiosInstance.post(`cart/${tableId}/add`, { productId, quantity });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    createOrderFromCart: async (tableId, workerId) => {
+        try {
+            const response = await axiosInstance.post(`cart/${tableId}/order`, { workerId });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     // ==================== INVOICES / FACTURES ====================
     getInvoicesWithFilters: async (restaurantId, params = {}) => {
         try {
@@ -314,6 +351,52 @@ export const apiGestionX = {
     getRestaurantRevenus: async (restaurantId, params = {}) => {
         try {
             const response = await axiosInstance.get(`factures/stats/restaurant/${restaurantId}`, { params });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    // ==================== OWNERS ====================
+    getAllOwners: async () => {
+        try {
+            const response = await axiosInstance.get('owners');
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    getOwnerDashboard: async (ownerId) => {
+        try {
+            const response = await axiosInstance.get(`owner/${ownerId}/dashboard`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    getOwnerProfile: async (ownerId) => {
+        try {
+            const response = await axiosInstance.get(`owner/${ownerId}/profile`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    getOwnerRestaurants: async (ownerId) => {
+        try {
+            const response = await axiosInstance.get(`owner/${ownerId}/restaurants`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    getOwnerManagers: async (ownerId) => {
+        try {
+            const response = await axiosInstance.get(`owner/${ownerId}/managers`);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;

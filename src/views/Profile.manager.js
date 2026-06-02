@@ -308,7 +308,7 @@ export default function ManagerProfile() {
                 id: worker._id,
                 name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Employé',
                 role: worker.role || user.role || 'Employé',
-                groupId: worker.groupe || worker.groupId || null,
+                groupId: worker.groupe?._id || worker.groupe || worker.groupId || null,
                 status: worker.status ? worker.status.toLowerCase() : 'working',
                 profileImage: user.avatar || worker.profileImage || user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || 'Employé')}&background=22c55e&color=ffffff`,
                 coverImage: worker.coverImage || user.coverImage || '',

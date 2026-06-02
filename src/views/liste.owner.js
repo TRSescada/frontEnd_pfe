@@ -1,158 +1,40 @@
-// src/views/liste.owner.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FooterRecharche from "../components/Footers/footer.recharche";
 import Navbar from "../components/Navbars/IndexNavbar";
 import OwnerCard from "components/Common/ownerCard.js";
-import { useHistory } from "react-router-dom";
+import { apiGestionX } from "services/apiGestionX";
 
 export default function ListeOwner() {
-  const history = useHistory();
   const [searchTerm, setSearchTerm] = useState("");
-  
-  const [owners, setOwners] = useState([
-    {
-      id: 1,
-      name: "Ahmed Benali",
-      role: "Propriétaire & Gérant",
-      restaurant: "Restaurant Andalous",
-      restaurantId: 1,
-      email: "ahmed.benali@andalus.dz",
-      phone: "+213 5 55 55 55 55",
-      location: "Alger, Algérie",
-      experience: "15 ans d'expérience",
-      bio: "Passionné par la cuisine traditionnelle algérienne, j'ai fondé le Restaurant Andalous pour faire découvrir les saveurs authentiques de notre terroir.",
-      image: "https://randomuser.me/api/portraits/men/32.jpg",
-      coverImage: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      joinDate: "2010",
-      employees: 12,
-      rating: 4.8,
-      socialLinks: {
-        facebook: "https://facebook.com/ahmed.benali",
-        instagram: "https://instagram.com/ahmed.benali",
-        linkedin: "https://linkedin.com/in/ahmed-benali"
-      },
-      achievements: [
-        "🏆 Meilleur restaurant traditionnel 2022",
-        "⭐ Certification qualité 5 étoiles",
-        "👨‍🍳 Chef formateur certifié"
-      ]
-    },
-    {
-      id: 2,
-      name: "Jean Dupont",
-      role: "Fondateur & Chef",
-      restaurant: "Café Parisien",
-      restaurantId: 2,
-      email: "jean.dupont@cafeparisien.fr",
-      phone: "+33 6 12 34 56 78",
-      location: "Paris, France",
-      experience: "20 ans d'expérience",
-      bio: "Passionné par l'art du café et la pâtisserie française, j'ai ouvert le Café Parisien pour offrir une expérience authentique aux amateurs de bonne cuisine.",
-      image: "https://randomuser.me/api/portraits/men/45.jpg",
-      coverImage: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb",
-      joinDate: "2005",
-      employees: 8,
-      rating: 4.5,
-      socialLinks: {
-        facebook: "https://facebook.com/jean.dupont",
-        instagram: "https://instagram.com/jean.dupont",
-        twitter: "https://twitter.com/jean.dupont"
-      },
-      achievements: [
-        "🏆 Meilleur café de Paris 2020",
-        "⭐ Élu pâtissier de l'année 2021"
-      ]
-    },
-    {
-      id: 3,
-      name: "Marco Rossi",
-      role: "Chef Italien & Propriétaire",
-      restaurant: "La Piazza Italia",
-      restaurantId: 3,
-      email: "marco.rossi@lapiazza.it",
-      phone: "+39 6 12 34 56 78",
-      location: "Rome, Italie",
-      experience: "25 ans d'expérience",
-      bio: "Je perpétue la tradition culinaire italienne familiale depuis trois générations. Chaque plat raconte une histoire d'amour pour la cuisine italienne.",
-      image: "https://randomuser.me/api/portraits/men/68.jpg",
-      coverImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5",
-      joinDate: "1998",
-      employees: 15,
-      rating: 4.7,
-      socialLinks: {
-        facebook: "https://facebook.com/marco.rossi",
-        instagram: "https://instagram.com/marco.rossi",
-        linkedin: "https://linkedin.com/in/marco-rossi"
-      },
-      achievements: [
-        "🏆 Étoile Michelin 2019",
-        "⭐ Meilleur restaurant italien de Rome",
-        "👨‍🍳 Maître cuisinier d'Italie"
-      ]
-    },
-    {
-      id: 4,
-      name: "Kenji Tanaka",
-      role: "Maître Sushi & Propriétaire",
-      restaurant: "Sushi Master",
-      restaurantId: 4,
-      email: "kenji.tanaka@sushimaster.jp",
-      phone: "+81 3 12 34 56 78",
-      location: "Tokyo, Japon",
-      experience: "30 ans d'expérience",
-      bio: "Formé au Japon dans la plus pure tradition des maîtres sushi, je vous invite à découvrir l'art du sushi authentique dans mon établissement.",
-      image: "https://randomuser.me/api/portraits/men/89.jpg",
-      coverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c",
-      joinDate: "1995",
-      employees: 20,
-      rating: 4.9,
-      socialLinks: {
-        facebook: "https://facebook.com/kenji.tanaka",
-        instagram: "https://instagram.com/kenji.tanaka",
-        twitter: "https://twitter.com/kenji.tanaka"
-      },
-      achievements: [
-        "🏆 Meilleur sushi chef du Japon 2018",
-        "⭐ 3 étoiles au guide gastronomique",
-        "👨‍🍳 Ambassadeur de la cuisine japonaise"
-      ]
-    },
-    {
-      id: 5,
-      name: "Sophia Martinez",
-      role: "Propriétaire & Cheffe Pâtissière",
-      restaurant: "Délices Sucrés",
-      restaurantId: 5,
-      email: "sophia@delicessucres.fr",
-      phone: "+33 6 98 76 54 32",
-      location: "Lyon, France",
-      experience: "12 ans d'expérience",
-      bio: "La pâtisserie est mon art. J'ai ouvert Délices Sucrés pour partager mes créations uniques alliant tradition et modernité.",
-      image: "https://randomuser.me/api/portraits/women/45.jpg",
-      coverImage: "https://images.unsplash.com/photo-1550617931-e17a7b70dce2",
-      joinDate: "2013",
-      employees: 6,
-      rating: 4.9,
-      socialLinks: {
-        facebook: "https://facebook.com/sophia.martinez",
-        instagram: "https://instagram.com/sophia.martinez"
-      },
-      achievements: [
-        "🏆 Meilleure pâtissière de Lyon 2021",
-        "⭐ Prix d'excellence 2022"
-      ]
-    }
-  ]);
-
+  const [owners, setOwners] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedOwner, setSelectedOwner] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const filteredOwners = owners.filter(owner =>
-    owner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.restaurant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    owner.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchOwners = async () => {
+      try {
+        setLoading(true);
+        const data = await apiGestionX.getAllOwners();
+        setOwners(data.owners || []);
+      } catch (error) {
+        console.error("Erreur lors du chargement des propriétaires:", error);
+        setOwners([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOwners();
+  }, []);
+
+  const filteredOwners = owners.filter(owner => {
+    const user = owner.user || {};
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+    const email = (user.email || '').toLowerCase();
+    const restaurantNames = (owner.restaurants || []).map(r => (r.name || '').toLowerCase()).join(' ');
+    const term = searchTerm.toLowerCase();
+    return name.includes(term) || email.includes(term) || restaurantNames.includes(term);
+  });
 
   const openOwnerModal = (owner) => {
     setSelectedOwner(owner);
@@ -160,14 +42,37 @@ export default function ListeOwner() {
   };
 
   const goToOwnerProfile = () => {
-    if (selectedOwner) {
-      setShowModal(false);
-      history.push(`/owner/${selectedOwner.id}`);
-    }
+    setShowModal(false);
   };
 
   const handleSearch = (value) => {
     setSearchTerm(value);
+  };
+
+  const getOwnerName = (owner) => {
+    const user = owner.user || {};
+    return `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Propriétaire';
+  };
+
+  const getOwnerImage = (owner) => {
+    return owner.user?.image || owner.restaurants?.[0]?.logo || 'https://randomuser.me/api/portraits/men/32.jpg';
+  };
+
+  const getOwnerRestaurant = (owner) => {
+    return owner.restaurants?.[0]?.name || 'Aucun restaurant';
+  };
+
+  const getOwnerEmail = (owner) => {
+    return owner.user?.email || '';
+  };
+
+  const getOwnerPhone = (owner) => {
+    return owner.user?.phone || '';
+  };
+
+  const getOwnerLocation = (owner) => {
+    const restaurant = owner.restaurants?.[0];
+    return restaurant?.location || owner.user?.location || '';
   };
 
   const style = `
@@ -359,16 +264,24 @@ export default function ListeOwner() {
       opacity: 0.5;
     }
     
-    .stats-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(255,255,255,0.1);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      color: rgba(255,255,255,0.7);
-      margin-right: 8px;
+    .loading-container {
+      text-align: center;
+      padding: 80px 20px;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .loading-spinner-lg {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(34,197,94,0.2);
+      border-top-color: #22c55e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
     
     @media (max-width: 768px) {
@@ -393,32 +306,36 @@ export default function ListeOwner() {
       <Navbar />
       
       <div className="owners-container">
-        <div className="owners-grid">
-          {filteredOwners.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">👤</div>
-              <p>Aucun propriétaire trouvé</p>
-              <p style={{ fontSize: '0.8rem' }}>Essayez une autre recherche</p>
-            </div>
-          ) : (
-            filteredOwners.map(owner => (
-              <OwnerCard 
-                key={owner.id}
-                ownerId={owner.id}
-                onViewProfile={(selectedOwner) => {
-                  setSelectedOwner(selectedOwner);
-                  setShowModal(true);
-                }}
-              />
-            ))
-          )}
-        </div>
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner-lg"></div>
+            <p>Chargement des propriétaires...</p>
+          </div>
+        ) : (
+          <div className="owners-grid">
+            {filteredOwners.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">👤</div>
+                <p>Aucun propriétaire trouvé</p>
+                <p style={{ fontSize: '0.8rem' }}>Essayez une autre recherche</p>
+              </div>
+            ) : (
+              filteredOwners.map(owner => (
+                <OwnerCard 
+                  key={owner._id}
+                  owner={owner}
+                  onViewProfile={openOwnerModal}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
       
       <FooterRecharche 
         type="owners"
         onSearch={handleSearch}
-        placeholder="🔍 Rechercher un propriétaire par nom, restaurant, ville ou rôle..."
+        placeholder="🔍 Rechercher un propriétaire par nom, restaurant ou email..."
       />
       
       {/* Modal détails propriétaire */}
@@ -427,57 +344,36 @@ export default function ListeOwner() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setShowModal(false)}>✕</button>
             
-            <div className="modal-cover" style={{ backgroundImage: `url(${selectedOwner.coverImage})` }}>
-              <img src={selectedOwner.image} alt={selectedOwner.name} className="modal-avatar" />
+            <div className="modal-cover" style={{ backgroundImage: `url(${getOwnerImage(selectedOwner)})` }}>
+              <img src={getOwnerImage(selectedOwner)} alt={getOwnerName(selectedOwner)} className="modal-avatar" />
             </div>
             
             <div className="modal-body">
-              <h2 className="modal-name">{selectedOwner.name}</h2>
-              <p className="modal-role">{selectedOwner.role}</p>
-              <div className="modal-restaurant">🏪 {selectedOwner.restaurant}</div>
+              <h2 className="modal-name">{getOwnerName(selectedOwner)}</h2>
+              <p className="modal-role">Propriétaire</p>
+              <div className="modal-restaurant">🏪 {getOwnerRestaurant(selectedOwner)}</div>
               
               <div className="modal-info">
                 <div className="info-row">
                   <span className="info-icon">📍</span>
-                  <span>{selectedOwner.location}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-icon">📅</span>
-                  <span>Membre depuis {selectedOwner.joinDate}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-icon">⭐</span>
-                  <span>Note moyenne: {selectedOwner.rating}/5</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-icon">👥</span>
-                  <span>{selectedOwner.employees} employés</span>
+                  <span>{getOwnerLocation(selectedOwner)}</span>
                 </div>
                 <div className="info-row">
                   <span className="info-icon">📧</span>
-                  <span>{selectedOwner.email}</span>
+                  <span>{getOwnerEmail(selectedOwner)}</span>
                 </div>
                 <div className="info-row">
                   <span className="info-icon">📞</span>
-                  <span>{selectedOwner.phone}</span>
+                  <span>{getOwnerPhone(selectedOwner)}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-icon">🍽️</span>
+                  <span>{selectedOwner.restaurantsCount} restaurant(s)</span>
                 </div>
               </div>
               
-              {selectedOwner.achievements && selectedOwner.achievements.length > 0 && (
-                <div className="modal-achievements">
-                  <div className="achievement-title">🏆 Réalisations</div>
-                  {selectedOwner.achievements.map((achievement, idx) => (
-                    <div key={idx} className="achievement-item">{achievement}</div>
-                  ))}
-                </div>
-              )}
-              
-              <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', fontSize: '0.85rem' }}>
-                {selectedOwner.bio}
-              </p>
-              
               <button className="btn-visit" onClick={goToOwnerProfile}>
-                👤 Voir le profil complet de {selectedOwner.name.split(' ')[0]} →
+                📞 Contacter {getOwnerName(selectedOwner).split(' ')[0]}
               </button>
             </div>
           </div>

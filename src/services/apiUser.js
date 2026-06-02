@@ -138,8 +138,35 @@ export const apiUser = {
 
     getOrdersByWorker: async (workerId) => {
         try {
-            const response = await axiosInstance.get(`../commande/worker/${workerId}/orders`);
+            const response = await axiosInstance.get(`worker/${workerId}/orders`);
             return response.data.orders || [];
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    updateAllItemsStatus: async (orderId, status) => {
+        try {
+            const response = await axiosInstance.put(`order/${orderId}/items/status`, { status });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    updateItemStatus: async (orderId, itemIndex, status) => {
+        try {
+            const response = await axiosInstance.put(`order/${orderId}/item/${itemIndex}/status`, { status });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
+    deleteCompletedOrdersByTable: async (tableObjectId) => {
+        try {
+            const response = await axiosInstance.delete(`table/${tableObjectId}/completed-orders`);
+            return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
         }

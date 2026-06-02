@@ -3,7 +3,7 @@ import axiosInstance from './axiosConfig';
 export const jobOfferService = {
   getAllWorkers: async () => {
     try {
-      const response = await axiosInstance.get('workers/available');
+      const response = await axiosInstance.get('workers/available', { timeout: 60000 });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

@@ -161,7 +161,7 @@ export default function ProductCard({
           gap: '5px',
           fontWeight: 'bold'
         }}>
-          <span>💰</span> {product.price} DA
+          <span>💰</span> {product.prix || product.price} DA
         </div>
         
         {product.description && (
