@@ -55,9 +55,9 @@ export const clientService = {
     }
   },
 
-  createOrder: async (tableId) => {
+  createOrder: async (tableId, workerId) => {
     try {
-      const response = await axiosInstance.post(`cart/${tableId}/order`);
+      const response = await axiosInstance.post(`cart/${tableId}/order`, workerId ? { workerId } : {});
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

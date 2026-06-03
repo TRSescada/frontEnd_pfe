@@ -55,7 +55,7 @@ export default function Menu() {
     setOrderLoading(true);
     try {
       await clientService.addToCart(tableId, productId, qty);
-      const result = await clientService.createOrder(tableId);
+      const result = await clientService.createOrder(tableId, waiterInfo?.workerId || waiterInfo?._id);
       setOrderSuccess({
         orderNumber: result.orderNumber,
         productName,
@@ -94,6 +94,7 @@ export default function Menu() {
         if (table?.employe?.user) {
           setWaiterInfo({
             _id: table.employe.user._id,
+            workerId: table.employe._id,
             nom: table.employe.user.lastName,
             prenom: table.employe.user.firstName,
             profileImage: table.employe.user.profileImage || table.employe.user.avatar,
@@ -105,6 +106,7 @@ export default function Menu() {
           const w = table.groupe.employe.user;
           setWaiterInfo({
             _id: w._id,
+            workerId: table.groupe.employe._id,
             nom: w.lastName,
             prenom: w.firstName,
             profileImage: w.profileImage || w.avatar,
@@ -120,6 +122,7 @@ export default function Menu() {
               const w = workers[0].user || {};
               setWaiterInfo({
                 _id: w._id || workers[0].user?._id,
+                workerId: workers[0]._id,
                 nom: w.lastName,
                 prenom: w.firstName,
                 profileImage: w.profileImage || w.avatar,
