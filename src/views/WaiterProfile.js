@@ -6,6 +6,7 @@ import CVSection from "components/Common/cvsection";
 import CommentSection from "components/Common/commentSection";
 import SocialFooter from "components/Common/socialFooter";
 import jobOfferService from "services/jobOfferService";
+import { clientService } from "services/clientService";
 
 export default function Profile() {
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function Profile() {
           phone: user.phone || '',
           location: user.location || '',
           languages: worker.languages || [],
+          restaurantId: worker.restaurant?._id || worker.restaurant || null,
           coverImage: user.coverImage || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
           profileImage: user.profileImage || user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.firstName || 'E')}&background=22c55e&color=ffffff`
         });
@@ -68,18 +70,32 @@ export default function Profile() {
     if (id) fetchWorkerData();
   }, [id]);
 
-  const handleAddComment = (newComment) => {
-    const comment = {
-      id: Date.now(),
-      author: newComment.userName || "Client",
-      text: newComment.comment,
-      rating: newComment.rating,
-      date: new Date().toISOString().split('T')[0],
-      avatar: "https://randomuser.me/api/portraits/lego/1.jpg"
-    };
-    setComments([comment, ...comments]);
-    setShowAddCommentModal(false);
-    alert("Commentaire ajoute avec succes !");
+  const handleAddComment = async (newComment) => {
+    if (!workerInfo?._id) {
+      alert("Erreur : Worker non identifié");
+      return;
+    }
+    try {
+      const result = await clientService.addCommentByWorker(workerInfo._id, {
+        clientName: newComment.author || "Client",
+        rating: newComment.rating,
+        comment: newComment.text,
+        restaurantId: workerInfo.restaurantId || undefined,
+      });
+      const savedComment = {
+        _id: result.comment.id,
+        clientName: result.comment.clientName,
+        comment: result.comment.comment,
+        rating: result.comment.rating,
+        createdAt: result.comment.createdAt,
+      };
+      setComments([savedComment, ...comments]);
+      setShowAddCommentModal(false);
+      alert("Commentaire ajouté avec succès !");
+    } catch (err) {
+      console.error("Error adding comment:", err);
+      alert("Erreur lors de l'ajout du commentaire.");
+    }
   };
   
   // ==================== STYLES ====================
@@ -817,6 +833,7 @@ export default function Profile() {
               comments={comments}
               onAddComment={handleAddComment}
               isEditable={true}
+              isClientMode={true}
             />
           </div>
         </div>

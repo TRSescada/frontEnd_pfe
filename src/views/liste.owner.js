@@ -3,6 +3,7 @@ import FooterRecharche from "../components/Footers/footer.recharche";
 import Navbar from "../components/Navbars/IndexNavbar";
 import OwnerCard from "components/Common/ownerCard.js";
 import { apiGestionX } from "services/apiGestionX";
+import apiUser from "services/apiUser";
 
 export default function ListeOwner() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -10,6 +11,10 @@ export default function ListeOwner() {
   const [loading, setLoading] = useState(true);
   const [selectedOwner, setSelectedOwner] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [managerId, setManagerId] = useState(null);
+  const [restaurantId, setRestaurantId] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignSuccess, setAssignSuccess] = useState(null);
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -25,6 +30,26 @@ export default function ListeOwner() {
       }
     };
     fetchOwners();
+  }, []);
+
+  useEffect(() => {
+    const fetchManagerData = async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+        const manager = await apiUser.getManagerByUserId(userId);
+        if (manager && manager._id) {
+          setManagerId(userId);
+          const restaurant = await apiGestionX.getRestaurantByManagerId(manager._id);
+          if (restaurant && restaurant._id) {
+            setRestaurantId(restaurant._id);
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement du manager:", error);
+      }
+    };
+    fetchManagerData();
   }, []);
 
   const filteredOwners = owners.filter(owner => {
@@ -43,6 +68,29 @@ export default function ListeOwner() {
 
   const goToOwnerProfile = () => {
     setShowModal(false);
+  };
+
+  const handleAssignOwner = async () => {
+    if (!managerId || !restaurantId) {
+      alert("Erreur : vous n'êtes pas connecté en tant que manager ou aucun restaurant ne vous est assigné.");
+      return;
+    }
+    if (!selectedOwner?.user?._id) {
+      alert("Erreur : propriétaire non identifié.");
+      return;
+    }
+    setAssignLoading(true);
+    setAssignSuccess(null);
+    try {
+      await apiGestionX.assignOwnerToRestaurant(managerId, restaurantId, selectedOwner.user._id);
+      setAssignSuccess(`${getOwnerName(selectedOwner)} a été assigné à votre restaurant avec succès !`);
+      setTimeout(() => setAssignSuccess(null), 4000);
+    } catch (error) {
+      console.error("Erreur lors de l'assignation:", error);
+      alert("Erreur lors de l'assignation du propriétaire.");
+    } finally {
+      setAssignLoading(false);
+    }
   };
 
   const handleSearch = (value) => {
@@ -372,9 +420,23 @@ export default function ListeOwner() {
                 </div>
               </div>
               
-              <button className="btn-visit" onClick={goToOwnerProfile}>
-                📞 Contacter {getOwnerName(selectedOwner).split(' ')[0]}
+              <button 
+                className="btn-visit" 
+                onClick={handleAssignOwner}
+                disabled={assignLoading || !managerId || !restaurantId}
+              >
+                {assignLoading ? "⏳ Assignation en cours..." : `📞 Assigner ${getOwnerName(selectedOwner).split(' ')[0]} à mon restaurant`}
               </button>
+              {assignSuccess && (
+                <p style={{ color: '#22c55e', textAlign: 'center', marginTop: '10px', fontSize: '0.9rem' }}>
+                  ✅ {assignSuccess}
+                </p>
+              )}
+              {!managerId && (
+                <p style={{ color: '#ef4444', textAlign: 'center', marginTop: '10px', fontSize: '0.8rem' }}>
+                  Connectez-vous en tant que manager pour assigner un propriétaire.
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -107,6 +107,24 @@ export const clientService = {
     } catch (error) {
       throw error.response?.data || error.message;
     }
+  },
+
+  addCommentByWorker: async (workerId, { clientName, rating, comment, restaurantId }) => {
+    try {
+      const response = await axiosInstance.post(`comment/worker/${workerId}`, { clientName, rating, comment, restaurantId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  getCommentsByWorker: async (workerId) => {
+    try {
+      const response = await axiosInstance.get(`comments/worker/${workerId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
   }
 };
 

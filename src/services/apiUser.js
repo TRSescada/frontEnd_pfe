@@ -172,6 +172,15 @@ export const apiUser = {
         }
     },
 
+    releaseTable: async (tableObjectId) => {
+        try {
+            const response = await axiosInstance.post(`table/${tableObjectId}/release`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
+    },
+
     uploadAvatar: async (userId, formData) => {
         try {
             const response = await axiosInstance.post(`../auth/upload-avatar/${userId}`, formData, {

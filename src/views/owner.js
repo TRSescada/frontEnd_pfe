@@ -20,6 +20,7 @@ export default function ProfileOwner() {
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [managers, setManagers] = useState([]);
   const [stats, setStats] = useState({ jour: 0, semaine: 0, mois: 0, saison: 0 });
+  const [restaurantsStats, setRestaurantsStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("restaurants");
   const [isEditing, setIsEditing] = useState(false);
@@ -88,6 +89,9 @@ export default function ProfileOwner() {
 
         if (dashboardRes.stats) {
           setStats(dashboardRes.stats);
+        }
+        if (dashboardRes.restaurantsStats) {
+          setRestaurantsStats(dashboardRes.restaurantsStats);
         }
       } catch (error) {
         console.error("Erreur lors du chargement des données propriétaire:", error);
@@ -331,6 +335,31 @@ export default function ProfileOwner() {
 
             {activeTab === "revenue" && (
               <div className="stats-section">
+                <h3 className="stats-section-title">📊 Vue d'ensemble</h3>
+                <div className="stats-grid">
+                  <div className="stat-card stat-card-purple">
+                    <div className="stat-icon">🍽️</div>
+                    <h3>Restaurants</h3>
+                    <p className="stat-number">{myRestaurants.length}</p>
+                  </div>
+                  <div className="stat-card stat-card-blue">
+                    <div className="stat-icon">👨‍💼</div>
+                    <h3>Managers</h3>
+                    <p className="stat-number">{managers.length}</p>
+                  </div>
+                  <div className="stat-card stat-card-green">
+                    <div className="stat-icon">🪑</div>
+                    <h3>Tables totales</h3>
+                    <p className="stat-number">{restaurantsStats.reduce((sum, r) => sum + (r.totalTables || 0), 0)}</p>
+                  </div>
+                  <div className="stat-card stat-card-orange">
+                    <div className="stat-icon">👥</div>
+                    <h3>Employés totaux</h3>
+                    <p className="stat-number">{restaurantsStats.reduce((sum, r) => sum + (r.totalWorkers || 0), 0)}</p>
+                  </div>
+                </div>
+
+                <h3 className="stats-section-title">💰 Revenus globaux</h3>
                 <div className="stats-grid">
                   <div className="stat-card">
                     <h3>💰 Revenus du jour</h3>
@@ -349,6 +378,56 @@ export default function ProfileOwner() {
                     <p className="stat-number">{totalRevenue.season.toLocaleString()} DH</p>
                   </div>
                 </div>
+
+                {restaurantsStats.length > 0 && (
+                  <>
+                    <h3 className="stats-section-title">🏪 Détail par restaurant</h3>
+                    <div className="restaurant-stats-list">
+                      {restaurantsStats.map((r) => (
+                        <div key={r.id} className="restaurant-stat-card">
+                          <div className="restaurant-stat-header">
+                            <img src={r.logo || 'https://cdn-icons-png.flaticon.com/512/1046/1046784.png'} alt={r.name} className="restaurant-stat-logo" />
+                            <div>
+                              <h4 className="restaurant-stat-name">{r.name}</h4>
+                              <p className="restaurant-stat-location">📍 {r.location || 'N/A'}</p>
+                            </div>
+                            <div className="restaurant-stat-rating">
+                              ⭐ {r.rating?.toFixed(1) || '0.0'}
+                            </div>
+                          </div>
+                          <div className="restaurant-stat-details">
+                            <div className="restaurant-stat-item">
+                              <span className="restaurant-stat-label">🪑 Tables</span>
+                              <span className="restaurant-stat-value">{r.totalTables || 0}</span>
+                            </div>
+                            <div className="restaurant-stat-item">
+                              <span className="restaurant-stat-label">👥 Employés</span>
+                              <span className="restaurant-stat-value">{r.totalWorkers || 0}</span>
+                            </div>
+                          </div>
+                          <div className="restaurant-stat-revenue">
+                            <div className="revenue-item">
+                              <span>Aujourd'hui</span>
+                              <strong>{(r.jour || 0).toLocaleString()} DH</strong>
+                            </div>
+                            <div className="revenue-item">
+                              <span>Cette semaine</span>
+                              <strong>{(r.semaine || 0).toLocaleString()} DH</strong>
+                            </div>
+                            <div className="revenue-item">
+                              <span>Ce mois</span>
+                              <strong>{(r.mois || 0).toLocaleString()} DH</strong>
+                            </div>
+                            <div className="revenue-item">
+                              <span>Cette saison</span>
+                              <strong>{(r.saison || 0).toLocaleString()} DH</strong>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -440,11 +519,33 @@ export default function ProfileOwner() {
         .restaurants-header h3 { color: white; font-size: 20px; }
         .restaurants-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
         .no-restaurants { text-align: center; padding: 50px; color: rgba(255,255,255,0.6); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .stat-card { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; }
         .stat-card:hover { transform: translateY(-5px); border-color: rgba(168,85,247,0.5); }
-        .stat-card h3 { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 10px; }
-        .stat-number { color: white; font-size: 36px; font-weight: bold; }
+        .stat-card h3 { color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 10px; }
+        .stat-number { color: white; font-size: 28px; font-weight: bold; }
+        .stat-icon { font-size: 28px; margin-bottom: 8px; }
+        .stat-card-purple { border-color: rgba(168,85,247,0.3); }
+        .stat-card-blue { border-color: rgba(59,130,246,0.3); }
+        .stat-card-green { border-color: rgba(34,197,94,0.3); }
+        .stat-card-orange { border-color: rgba(249,115,22,0.3); }
+        .stats-section-title { color: white; font-size: 18px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .restaurant-stats-list { display: flex; flex-direction: column; gap: 15px; }
+        .restaurant-stat-card { background: rgba(0,0,0,0.3); border-radius: 16px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; }
+        .restaurant-stat-card:hover { border-color: rgba(168,85,247,0.4); transform: translateY(-2px); }
+        .restaurant-stat-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .restaurant-stat-logo { width: 50px; height: 50px; border-radius: 12px; object-fit: cover; background: rgba(255,255,255,0.1); }
+        .restaurant-stat-name { color: white; font-size: 16px; font-weight: 600; margin: 0; }
+        .restaurant-stat-location { color: rgba(255,255,255,0.5); font-size: 12px; margin: 3px 0 0; }
+        .restaurant-stat-rating { margin-left: auto; color: #fbbf24; font-size: 14px; font-weight: 600; background: rgba(251,191,36,0.1); padding: 5px 10px; border-radius: 20px; }
+        .restaurant-stat-details { display: flex; gap: 20px; margin-bottom: 15px; }
+        .restaurant-stat-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 14px; border-radius: 8px; flex: 1; }
+        .restaurant-stat-label { color: rgba(255,255,255,0.6); font-size: 13px; }
+        .restaurant-stat-value { color: white; font-weight: 600; font-size: 15px; }
+        .restaurant-stat-revenue { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .revenue-item { display: flex; flex-direction: column; align-items: center; background: rgba(168,85,247,0.08); padding: 10px; border-radius: 10px; }
+        .revenue-item span { color: rgba(255,255,255,0.5); font-size: 11px; text-align: center; }
+        .revenue-item strong { color: #a855f7; font-size: 13px; margin-top: 4px; }
         .managers-section h3 { color: white; font-size: 20px; margin-bottom: 20px; }
         .managers-header { margin-bottom: 20px; }
         .managers-header h3 { color: white; font-size: 20px; }
@@ -461,7 +562,8 @@ export default function ProfileOwner() {
           .restaurants-grid { grid-template-columns: 1fr; }
           .managers-grid { grid-template-columns: 1fr; }
           .tab-content { padding: 20px; }
-          .stats-grid { grid-template-columns: 1fr; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr); }
+          .restaurant-stat-revenue { grid-template-columns: repeat(2, 1fr); }
           .button-group { flex-direction: column; align-items: center; }
           .edit-btn, .logout-btn { width: 200px; }
           .edit-cover-btn { font-size: 10px; padding: 5px 8px; }

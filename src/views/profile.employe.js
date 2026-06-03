@@ -68,15 +68,15 @@ const GroupDetailModal = memo(({ groupId, orders, onUpdateOrderStatus, onClose }
           tableId: order.tableId
         };
       }
-      groups[key].quantity++;
+      groups[key].quantity += (order.quantity || 1);
       groups[key].orders.push(order);
     });
     return Object.values(groups).find(g => g.id === groupId);
   }, [orders, groupId]);
   
-  const handleUpdateSingleOrder = useCallback((orderId, newStatus, e) => {
+  const handleUpdateSingleOrder = useCallback((orderId, newStatus, itemIndex, e) => {
     if (e) e.stopPropagation();
-    setPendingAction({ orderId, newStatus });
+    setPendingAction({ orderId, newStatus, itemIndex });
     setShowCheckmark(true);
   }, []);
   
@@ -91,7 +91,7 @@ const GroupDetailModal = memo(({ groupId, orders, onUpdateOrderStatus, onClose }
       if (pendingAction.all) {
         currentGroup?.orders.forEach(order => onUpdateOrderStatus(order.id, pendingAction.newStatus));
       } else {
-        onUpdateOrderStatus(pendingAction.orderId, pendingAction.newStatus);
+        onUpdateOrderStatus(pendingAction.orderId, pendingAction.newStatus, pendingAction.itemIndex);
       }
       setPendingAction(null);
     }
@@ -126,8 +126,8 @@ const GroupDetailModal = memo(({ groupId, orders, onUpdateOrderStatus, onClose }
           {showIndividualOrders && (
             <div className="individual-orders-list" style={{ maxHeight: '300px', overflowY: 'auto', marginTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '15px' }}>
               <h4 className="text-white font-bold mb-3 text-center">📋 Commandes individuelles:</h4>
-              {currentGroup.orders.map((order) => (
-                <div key={order.id} className="individual-order-item" style={{
+              {currentGroup.orders.map((order, idx) => (
+                <div key={`${order.id}_${order.itemIndex}_${idx}`} className="individual-order-item" style={{
                   background: 'rgba(255,255,255,0.05)',
                   borderRadius: '10px',
                   padding: '10px',
@@ -149,8 +149,8 @@ const GroupDetailModal = memo(({ groupId, orders, onUpdateOrderStatus, onClose }
                     </div>
                   </div>
                   <div className="individual-order-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button onClick={(e) => handleUpdateSingleOrder(order.id, 'completed', e)} className="btn-livre" style={{ padding: '5px 12px', fontSize: '12px' }}>✅ Livrée</button>
-                    <button onClick={(e) => handleUpdateSingleOrder(order.id, 'cancelled', e)} className="btn-annule" style={{ padding: '5px 12px', fontSize: '12px' }}>❌ Annulée</button>
+                    <button onClick={(e) => handleUpdateSingleOrder(order.id, 'completed', order.itemIndex, e)} className="btn-livre" style={{ padding: '5px 12px', fontSize: '12px' }}>✅ Livrée</button>
+                    <button onClick={(e) => handleUpdateSingleOrder(order.id, 'cancelled', order.itemIndex, e)} className="btn-annule" style={{ padding: '5px 12px', fontSize: '12px' }}>❌ Annulée</button>
                   </div>
                 </div>
               ))}
@@ -271,7 +271,7 @@ const OrderList = ({ orders, onUpdateOrderStatus, onModalOpenChange }) => {
           orderNumbers: []
         };
       }
-      groups[key].quantity++;
+      groups[key].quantity += (order.quantity || 1);
       groups[key].orders.push(order);
       groups[key].orderNumbers.push(order.orderNumber);
       if (order.status === 'cancelled') groups[key].status = 'cancelled';
@@ -387,7 +387,7 @@ const TablesList = ({ completedOrders, onTableClick }) => {
         };
       }
       
-      groups[productKey].quantity++;
+      groups[productKey].quantity += (order.quantity || 1);
       groups[productKey].orders.push(order);
       groups[productKey].orderNumbers.push(order.orderNumber);
       groups[productKey].total += order.price;
@@ -654,24 +654,46 @@ export default function Profileemploye() {
     try {
       setIsLoadingOrders(true);
       const workerOrders = await apiUser.getOrdersByWorker(workerId);
-      const mappedOrders = workerOrders.map(order => {
-        const firstItem = Array.isArray(order.items) && order.items.length > 0 ? order.items[0] : {};
+      const mappedOrders = [];
+      workerOrders.forEach(order => {
         const tableObj = order.tableId;
         const tableNumber = tableObj?.numero || tableObj?.number || tableObj || 'N/A';
         const tableObjectId = tableObj?._id || null;
-        return {
-          id: order._id || order.id,
-          name: firstItem.name || `Commande #${order.orderNumber}`,
-          price: order.total || firstItem.total || firstItem.prix || 0,
-          status: order.status === 'en attente' || order.status === 'partiellement livre' || order.status === 'partiellement annule' ? 'pending' :
-                  order.status === 'complete' ? 'completed' :
-                  order.status === 'annule' ? 'cancelled' : 'pending',
-          time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
-          notes: firstItem.notes || '',
-          tableId: tableNumber,
-          tableObjectId: tableObjectId,
-          orderNumber: order.orderNumber || order._id || Date.now()
-        };
+        const items = Array.isArray(order.items) ? order.items : [];
+        if (items.length === 0) {
+          mappedOrders.push({
+            id: order._id || order.id,
+            name: `Commande #${order.orderNumber}`,
+            price: order.total || 0,
+            quantity: 1,
+            status: order.status === 'en attente' || order.status === 'partiellement livre' || order.status === 'partiellement annule' ? 'pending' :
+                    order.status === 'complete' ? 'completed' :
+                    order.status === 'annule' ? 'cancelled' : 'pending',
+            time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+            notes: '',
+            tableId: tableNumber,
+            tableObjectId: tableObjectId,
+            orderNumber: order.orderNumber || order._id || Date.now()
+          });
+        } else {
+          items.forEach((item, itemIndex) => {
+            const itemStatus = item.status === 'livree' ? 'completed' :
+                               item.status === 'annule' ? 'cancelled' : 'pending';
+            mappedOrders.push({
+              id: order._id,
+              itemIndex: itemIndex,
+              name: item.name || `Commande #${order.orderNumber}`,
+              price: item.prix || item.total || 0,
+              quantity: item.quantity || 1,
+              status: itemStatus,
+              time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
+              notes: item.notes || '',
+              tableId: tableNumber,
+              tableObjectId: tableObjectId,
+              orderNumber: order.orderNumber || order._id || Date.now()
+            });
+          });
+        }
       });
       setOrders(mappedOrders);
     } catch (error) {
@@ -686,10 +708,14 @@ export default function Profileemploye() {
     fetchWorkerOrders();
   }, [fetchWorkerOrders]);
   
-  const updateOrderStatus = useCallback(async (orderId, newStatus) => {
+  const updateOrderStatus = useCallback(async (orderId, newStatus, itemIndex) => {
     const backendStatus = newStatus === 'completed' ? 'livree' : newStatus === 'cancelled' ? 'annule' : 'en attente';
     try {
-      await apiUser.updateAllItemsStatus(orderId, backendStatus);
+      if (itemIndex !== undefined && itemIndex !== null) {
+        await apiUser.updateItemStatus(orderId, itemIndex, backendStatus);
+      } else {
+        await apiUser.updateAllItemsStatus(orderId, backendStatus);
+      }
       await fetchWorkerOrders();
     } catch (error) {
       console.error('Erreur mise à jour statut:', error);
@@ -711,8 +737,7 @@ export default function Profileemploye() {
       try {
         const tableObj = ordersToLiberate.find(o => o.tableObjectId)?.tableObjectId;
         if (tableObj) {
-          await apiGestionX.updateTableStatus(tableObj, 'libre');
-          await apiUser.deleteCompletedOrdersByTable(tableObj);
+          await apiUser.releaseTable(tableObj);
         }
         await fetchWorkerOrders();
         alert(`✅ Table ${tableId} libérée avec succès`);
@@ -793,7 +818,7 @@ export default function Profileemploye() {
         };
       }
       
-      groups[productKey].quantity++;
+      groups[productKey].quantity += (order.quantity || 1);
       groups[productKey].orders.push(order);
       groups[productKey].total += order.price;
     });
