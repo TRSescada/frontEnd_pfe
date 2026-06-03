@@ -357,13 +357,14 @@ export default function AuthNavbar(props) {
             
             <Link
               to="/"
-              className="text-white text-sm font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase"
+              className="text-white text-sm font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase flex items-center"
               style={{
                 textShadow: "0 0 10px rgba(168, 85, 247, 0.5)",
                 letterSpacing: "1px"
               }}
             >
-              Notus React
+              <img src="/restosmart.jfif" alt="RestoSmart" className="h-8 w-8 rounded-full mr-2" />
+              RestoSmart
             </Link>
             
             <button

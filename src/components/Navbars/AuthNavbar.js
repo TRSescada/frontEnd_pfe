@@ -51,7 +51,7 @@ export default function AuthNavbar(props) {
                 letterSpacing: "1px"
               }}
             >
-              Notus React
+              resto smart
             </Link>
             <button
               className="cursor-pointer text-xl leading-none px-3 py-1 border border-solid border-transparent rounded bg-transparent block lg:hidden outline-none focus:outline-none text-white"

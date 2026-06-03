@@ -1,6 +1,6 @@
 {
-  "short_name": "Notus React",
-  "name": "Notus React by Creative Tim",
+  "short_name": "resto smart",
+  "name": "restosmartby Creative Tim",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,7 +8,7 @@
       "type": "image/x-icon"
     },
     {
-      "src": "apple-icon.png",
+      "src": "restosmart.jfif",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     }

@@ -42,6 +42,15 @@ const getRoleRedirect = (role) => {
   return "/";
 };
 
+function HomeRoute() {
+  const token = getUserToken();
+  const role = getUserRole();
+  if (token && role) {
+    return <Redirect to={getRoleRedirect(role)} />;
+  }
+  return <Redirect to="/auth/login" />;
+}
+
 function RoleRoute({ component: Component, allowedRoles, ...rest }) {
   return (
     <Route
@@ -86,7 +95,7 @@ function AppRoutes() {
         <Route path="/owners" exact component={ListeOwner} />
         <Route path="/waiter-profile/:id" exact component={WaiterProfile} />
         <Route path="/employee-evaluation/:id" exact component={EmployeeEvaluation} />
-        <Route path="/" exact component={Index} />
+        <Route path="/" exact component={HomeRoute} />
         {/* add redirect for first page */}
         <Redirect from="*" to="/" />
       </Switch>

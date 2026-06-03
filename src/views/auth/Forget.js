@@ -166,7 +166,7 @@ export default function Forget() {
           <div className="card-content">
             <div className="logo-wrapper">
               <div className="logo">
-                <span>S</span>
+                <img src="/restosmart.jfif" alt="RestoSmart" className="logo-img" />
                 <div className="logo-glow"></div>
               </div>
             </div>
@@ -581,13 +581,11 @@ export default function Forget() {
           background: rgba(255, 255, 255, 0.05);
         }
 
-        .logo span {
-          font-size: 20px;
-          font-weight: bold;
-          background: linear-gradient(180deg, white, rgba(255,255,255,0.7));
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
+        .logo-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
         }
 
         .logo-glow {

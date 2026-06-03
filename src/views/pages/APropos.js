@@ -68,14 +68,13 @@ export default function APropos({ onBack }) {
           margin: 30px 0;
         }
 
-        .logo span {
-          font-size: 3rem;
-          background: linear-gradient(135deg, #22c55e, #15803d);
-          padding: 15px 40px;
-          border-radius: 60px;
-          display: inline-block;
-          font-weight: bold;
-          color: #ffffff;
+        .logo-img {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid rgba(34, 197, 94, 0.5);
+          box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
         }
 
         .section {
@@ -165,7 +164,7 @@ export default function APropos({ onBack }) {
         </div>
 
         <div className="logo">
-          <span>🍽️ RestoSmart</span>
+          <img src="/restosmart.jfif" alt="RestoSmart" className="logo-img" />
         </div>
 
         <div className="section">
